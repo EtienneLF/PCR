@@ -105,4 +105,4 @@ dist
 
 *.env
 
-*.c
+test
