@@ -1,2 +1,6 @@
 test
 libTestsPCR
+*.o
+TestLectureEcriture
+TestMessage
+TestRedirection
