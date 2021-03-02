@@ -4,3 +4,6 @@ libTestsPCR
 TestLectureEcriture
 TestMessage
 TestRedirection
+a.out
+.vscode
+terminal
