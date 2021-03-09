@@ -35,8 +35,10 @@ int main(int argc, char *argv[])
     struct tm * pTime = localtime( & timestamp );
 
     char buffer[ MAX_SIZE ];
-    strftime( buffer, MAX_SIZE, "%H:%M:%S", pTime );
+    strftime( buffer, MAX_SIZE, "%Y%m%d %H:%M:%S", pTime );
     printf( "Time : %s\n", buffer );
+
+    printf("Seconds since January 1, 1970 = %ld\n", time(NULL));
 
 
     return 0;

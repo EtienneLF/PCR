@@ -27,8 +27,8 @@ TestLectureEcriture: lectureEcriture.o TestLectureEcriture.c
 terminal: message.o alea.o terminal.o alea.o lectureEcriture.o
 	gcc terminal.c message.o alea.o lectureEcriture.o -o  terminal
 
-validation: validation.o
-	gcc validation.o -o validation
+validation: message.o lectureEcriture.o validation.o
+	gcc validation.c message.o lectureEcriture.o -o validation
 
 test: message.o alea.o lectureEcriture.o test.c
 	gcc -Wall test.c message.o alea.o lectureEcriture.o -o test
