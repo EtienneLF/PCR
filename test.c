@@ -5,6 +5,10 @@
 #include "alea.h"
 #include "message.h"
 #include "lectureEcriture.h"
+#include <time.h>
+
+#define MAX_SIZE 80
+
 
 char* createMsg(){
     char time[255];
@@ -23,9 +27,17 @@ int main(int argc, char *argv[])
     printf("Voici le message : %s", Message);
 
     //nt fd = open("README",O_RDONLY);
-    char* ligne = litLigne(0);
+    /*char* ligne = litLigne(0);
 
-    ecritLigne(1,ligne);
+    ecritLigne(1,ligne);*/
+
+    time_t timestamp = time( NULL );
+    struct tm * pTime = localtime( & timestamp );
+
+    char buffer[ MAX_SIZE ];
+    strftime( buffer, MAX_SIZE, "%H:%M:%S", pTime );
+    printf( "Time : %s\n", buffer );
+
 
     return 0;
 } 
