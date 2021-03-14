@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+//#define MAX_SIZE 80
 
 void usage(char * basename) { // DUPLICATION A CHANGER
     fprintf(stderr,
@@ -45,9 +46,6 @@ int main(int argc, char* argv[])
     char* lignePCR = litLigne(df);
 
     while(strcmp(lignePCR, "erreur") != 0 ){
-        //Découpe des messages ds PCR.txt
-        //char emeteurPCR[255], typePCR[255], valeurPCR[255];
-        //int PCRDecoupe = decoupe(lignePCR, emeteurPCR, typePCR, valeurPCR);
         printf("Ligne lue: %s", lignePCR);
 
         char resultat = lignePCR[strlen(lignePCR)-2]; //dernier caractère
@@ -66,10 +64,65 @@ int main(int argc, char* argv[])
 
                         j = j+1;
                     }
+
+
+                    /**
+                     * 
+                     *  CODE INTERMEDIAIRE dsl c deg T-T
+                     * 
+                    */
+                   
+                    //Recuperation de la date du jour (date de la demande)
+                    time_t timestamp1 = time( NULL );
+                    struct tm * pTime = localtime( & timestamp1 );
+
+                    //char buffer[ MAX_SIZE ];
+                    //strftime( buffer, MAX_SIZE, "%Y%m%d %H:%M:%S", pTime );
+                    //printf( "Time : %s\n", buffer ); //à supprimer
+                    
+
+                    //test calcul jour deg faire switch ds le while
+                    char jourTest[2];
+                    jourTest[0] = timestamp[0];
+                    jourTest[1] = timestamp[1];
+                    int jourTestint = atoi(jourTest);
+                    printf("jour du Test: %d \n", jourTestint);
+                    int calculJour = pTime->tm_mday - jourTestint;
+                    printf("calcul du jour : %d \n", calculJour);
+
+                    char moisTest[2];
+                    moisTest[0] = timestamp[2];
+                    moisTest[1] = timestamp[3];
+                    int moisTestint = atoi(moisTest);
+                    printf("mois du Test: %d \n", moisTestint);
+                    int calculMois = ((pTime->tm_mon+1) - moisTestint)*30; //*30 pour avoir le nbr de mois en jour
+                    printf("calcul du mois : %d \n", calculMois);
+
+                    char anneeTest[4];
+                    anneeTest[0] = timestamp[4];
+                    anneeTest[1] = timestamp[5];
+                    anneeTest[2] = timestamp[6];
+                    anneeTest[3] = timestamp[7];
+                    int anneeTestint = atoi(anneeTest);
+                    printf("annee du Test: %d \n", anneeTestint);
+                    int calculAnnee = ((pTime->tm_year+1900) - anneeTestint)*360; //$360 pour avoir le nbr d'année en jours
+                    printf("calcul de l'année : %d \n", calculAnnee); //ok
+
+                    //Comparaison durée validité et durée entre la réalisation du test et aujourd'hui
+                    int calculFinal = calculJour + calculMois + calculAnnee;
+                    int valeurTest = atoi(valeur);
+                    printf("Durée (en jours) entre la date du test et la date actuelle: %d \n", calculFinal);
+                    if((-calculFinal) <= valeurTest){ //-CalculFinal car si on envoie une demande dont le test a été fait plus tard la valeur finale va être négative
+                        printf("Validité du test correct \n");
+                    }
+                    else{
+                        printf("Validité du test incorrect \n");
+                    }
+
                     printf("timestamp: %s \n", timestamp);
-                    //char *msg = message(emeteur, "Reponse", resultat);
-                    //printf("%s", msg);
                     printf("resultat : %c \n", resultat);
+
+
                     free(timestamp);
                 }
             } 
@@ -84,6 +137,7 @@ int main(int argc, char* argv[])
 
         /*if(strcmp(emeteur,emeteurPCR) == 0){
             |0001000000000000|Demande|13021|
+            |0001000000000000|Demande|180| --> durée de validité de 180 jours
         }*/
 
         lignePCR = litLigne(df);
