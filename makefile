@@ -43,4 +43,4 @@ clean:
 	rm -f *.o *~ 
 
 cleanall: clean
-	rm TestRedirection TestMessage TestLectureEcriture terminal test
+	rm TestRedirection TestMessage TestLectureEcriture terminal test validation acquisition
