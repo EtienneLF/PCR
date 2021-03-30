@@ -11,8 +11,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-//#define MAX_SIZE 80
-
 void usage(char * basename) { // DUPLICATION A CHANGER
     fprintf(stderr,
         "usage : %s [<programme 1> [<programme 2>]]\n",
@@ -61,11 +59,9 @@ int main(int argc, char* argv[])
 
                         j = j+1;
                     }
-
                     time_t now;
                     now = time(NULL);
                     
-
                     char* valide = "0";
                     int iValeur = atoi(valeur);
                     int iTimestamp = atoi(timestamp);
@@ -82,38 +78,13 @@ int main(int argc, char* argv[])
                 }
             } 
             else{
-                //printf("Numéro du test inconnu. \n");
                 break;
             }
             
         }
-        
-        
-
-        /*if(strcmp(emeteur,emeteurPCR) == 0){
-            |0001000000000000|Demande|13021|
-        }*/
-
         lignePCR = litLigne(df);
 
     } 
     close(df);
-
-    
-
-        //bouvle tous les teste pcr pour trover le bon
-        //check la date vailidité
-        //stocker valeur du 0 ou 1
-        //écrire un message n° test réponse + 0 ou 1
-
-    
-
-    // Lire Entrée (donc reception Demande)
-    // Séparé le message (avoir le numéro)
-    // Lire le nnuméro présent dans Pcr.txt
-    // Vérifié validité
-    // Ecrire la réponse sur la sortie
-
-    
    return 0;
 }

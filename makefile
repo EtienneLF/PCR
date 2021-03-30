@@ -1,4 +1,4 @@
-all:	 TestMessage TestRedirection TestLectureEcriture terminal test validation
+all:	 TestMessage TestRedirection TestLectureEcriture terminal test validation acquisition
 
 message.o: message.c message.h
 	gcc -Wall -c message.c
@@ -11,6 +11,9 @@ terminal.o: terminal.c
 
 validation.o: validation.c 
 	gcc -Wall -c validation.c
+
+acquisition.o: acquisition.c
+	gcc -Wall -c acquisition.c
 
 TestMessage: message.o alea.o TestMessage.c
 	gcc -Wall TestMessage.c message.o alea.o -o  TestMessage
@@ -32,6 +35,9 @@ validation: message.o lectureEcriture.o validation.o
 
 test: message.o alea.o lectureEcriture.o test.c
 	gcc -Wall test.c message.o alea.o lectureEcriture.o -o test
+
+acquisition: message.o lectureEcriture.o acquisition.o
+	gcc -Wall acquisition.c message.o lectureEcriture.o -o acquisition
 
 clean:	
 	rm -f *.o *~ 
