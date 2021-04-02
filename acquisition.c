@@ -18,51 +18,38 @@ void usage(char * basename) { // DUPLICATION A CHANGER
 }
 
 /**
- * Retourne le descripteur de fichier vers lequel l'on veut envoyer le fichier en fonction du numero
- * Numero : Numero Pcr,
+ * Retourne le descripteur de fichier vers lequel l'on veut envoyer le fichier en fonction du numero et du type de demande
+ * Numero : Numero Pcr, type : Demande ou Réponse
 */
 int testNumero(char* numero, char* type){
+    //Ouverture des fichiers
     int fdValidation = open("Txt/E_validation.txt",O_WRONLY);
     int fd_IA = open("Txt/E_inter_archive.txt",O_WRONLY);
     int fdTerminal = open("Txt/E_terminal.txt",O_WRONLY);
-    if(strcmp(numero, "0001") == 0){
-        if (strcmp(type, "Demande") == 0){
-            return fdValidation; // ok
-        }
-        else if(strcmp(type, "Reponse") == 0){
-            return fdTerminal; // Tableau
-        }
-    }
-    else{
-        return fd_IA; //Pas bon
+
+    //Retenir les 4 premiers numéro
+    char num[5];
+    for (int i = 0; i<4; i++){
+        num[i] = numero[i];
     }
 
+
+
+    if(strcmp(type, "Demande") == 0){
+        if(strcmp(num, "0001") == 0){
+            return fdValidation;
+        }
+        else{
+            return fd_IA;
+        }
+    }
+    else if(strcmp(type, "Reponse") == 0){
+        return fdTerminal;//Tableau
+    }
+    
     return -1;
+    
 }
-
-
-/**
- * Retourne le descripteur de fichier vers lequel l'on veut envoyer le fichier
- * Numero : Numero Pcr, Type : Demande/Reponse
-*/
-/**
-int redirectionSortie(char* numero, char* type){
-    if(strcmp(type, "Demande") == 0 ){
-        // Test les premiers numéros du test PCR pour Validation ou interarchives
-        //int fdValidation = open("Txt/E_validation.txt",O_WRONLY);
-        return testNumero(numero);
-    }
-    else if (strcmp(type, "Reponse") == 0){
-        // Retrouver dans une liste numéro Pcr --> Descripteur fichier a retourner
-        // Reponse soit terminal ou soit interarchive
-        int fdTerminal = open("Txt/E_terminal.txt",O_WRONLY);
-        return fdTerminal;
-    }
-    else{
-        printf("Erreur, valeur non reconnue \n");
-        return 1;
-    }
-}*/
 
 int main(int argc, char* argv[])
 { 
@@ -85,12 +72,7 @@ int main(int argc, char* argv[])
             exit(1);
         }
 
-        char num[5];
-        for (int i = 0; i<4; i++){
-            num[i] = numero[i];
-        }
-
-        int sortie = testNumero(num,type);
+        int sortie = testNumero(numero,type);
         if(sortie == -1){ // Si erreur Open
             printf("Erreur Open\n");
             exit(1);
