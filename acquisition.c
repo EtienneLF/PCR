@@ -23,7 +23,7 @@ void usage(char * basename) { // DUPLICATION A CHANGER
  * Retourne le descripteur de fichier vers lequel l'on veut envoyer le fichier en fonction du numero et du type de demande
  * Numero : Numero Pcr, type : Demande ou Réponse
 */
-int testNumero(char* numero, char* type, int** tab){
+int testNumero(char* numero, char* type, int** tab, long long int* tabID){
     //Ouverture des fichiers 
     int fdValidation = open("Txt/E_validation.txt",O_WRONLY);
     int fd_IA = open("Txt/E_inter_archive.txt",O_WRONLY);
@@ -40,14 +40,16 @@ int testNumero(char* numero, char* type, int** tab){
         olddf = dup(0);
         if(strcmp(num, "0001") == 0){
             fprintf(stderr, "Demande n°%s, transmie à Validation de %i\n" , numero,olddf);
-            //tab[1][0] = atoi(numero);
-            tab[2][0] = olddf;
+            tab[0][0] = 1;
+            tab[1][0] = olddf;
+            tabID[0] = strtoll(numero,NULL,10);
             return fdValidation;
         }
         else{
             fprintf(stderr, "Demande n°%s, transmie à Inter_Archives de %i\n" , numero,olddf);
-            //tab[1][1] = atoi(numero);
-            tab[2][1] = olddf;
+            tab[0][1] = 1;
+            tab[1][1] = olddf;
+            tabID[1] = strtoll(numero,NULL,10);
             return fd_IA;
         }
     }
@@ -68,11 +70,15 @@ int main(int argc, char* argv[])
 
     int memoire = 6;
 
-    int ** tab = calloc(3,sizeof(int));
+    int ** tab = calloc(2,sizeof(int));
 
-    for(int i = 0; i< 3;i++){
+    for(int i = 0; i< 2;i++){
         tab[i] = calloc(memoire, sizeof(int));
     }
+
+
+    long long int * tabID = calloc(memoire, sizeof(long long int));
+
 
     int fdTerminal = open("Txt/R_inter_archive.txt",O_RDONLY);
     char* ligne = litLigne(fdTerminal);
@@ -89,7 +95,7 @@ int main(int argc, char* argv[])
             exit(1);
         }
 
-        int sortie = testNumero(numero,type,tab);
+        int sortie = testNumero(numero,type,tab,tabID);
         if(sortie == -1){ // Si erreur Open
             fprintf(stderr, "Erreur Open\n");
             exit(1);
@@ -140,14 +146,19 @@ int main(int argc, char* argv[])
     */
    
   
-    for(int i = 0; i< 3;i++){
+    for(int i = 0; i< 2;i++){
         for(int j = 0; j< memoire;j++){
             fprintf(stderr, "%d ", tab[i][j]);
         }
         fprintf(stderr, "\n");
     }
 
+    for(int i = 0; i< memoire;i++){
+        fprintf(stderr, "%lli ", tabID[i]);
+    }
+
     free(tab);
+    free(tabID);
    
    return 0;
 }
