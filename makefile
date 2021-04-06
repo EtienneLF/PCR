@@ -13,7 +13,7 @@ validation.o: validation.c
 	gcc -Wall -c validation.c
 
 acquisition.o: acquisition.c
-	gcc -Wall -c acquisition.c
+	gcc -Wall -c acquisition.c -lpthread
 
 TestMessage: message.o alea.o TestMessage.c
 	gcc -Wall TestMessage.c message.o alea.o -o  TestMessage
@@ -37,7 +37,7 @@ test: message.o alea.o lectureEcriture.o test.c
 	gcc -Wall test.c message.o alea.o lectureEcriture.o -o test
 
 acquisition: message.o lectureEcriture.o acquisition.o
-	gcc -Wall acquisition.c message.o lectureEcriture.o -o acquisition
+	gcc -Wall acquisition.c message.o lectureEcriture.o -o acquisition -lpthread
 
 clean:	
 	rm -f *.o *~ 

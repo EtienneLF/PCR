@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 #include "lectureEcriture.h"
 #include "message.h"
@@ -14,6 +15,8 @@
 int memoire;
 int ** tab;
 long long int * tabID;
+sem_t s_memoire;
+sem_t s_ecriture;
 
 
 void usage(char * basename) {
@@ -81,8 +84,9 @@ int thDemande(char* numero){
  * Retourne le descripteur de fichier vers lequel l'on veut envoyer le fichier en fonction du numero et du type de demande
  * Numero : Numero Pcr, type : Demande ou Réponse
 */
-void *testNumero(char * msg){
-     
+void *testNumero(void * arg){
+    char * msg = (char *) arg;
+
     char numero[255], type[255], valeur[255];
     int msgDecoupe = decoupe(msg, numero, type, valeur);
     int sortie;
@@ -93,11 +97,13 @@ void *testNumero(char * msg){
     }
 
     if(strcmp(type, "Demande") == 0){
+        sem_wait(&s_memoire);
         sortie = thDemande(numero);
     }
     else if(strcmp(type, "Reponse") == 0){
         sortie = thReponse(numero);
         fprintf(stderr, "Reponse n°%s, transmie à %d \n" , numero,sortie);
+        sem_post(&s_memoire);
     }
 
     if(sortie == -1){ // Si erreur Open
@@ -105,13 +111,15 @@ void *testNumero(char * msg){
         exit(1);
     }
 
+    sem_wait(&s_ecriture);
     dup2(sortie,1); // Redirige la sortie
+
     if( ! ecritLigne(1,msg)){ // Si erreur écriture
         fprintf(stderr, "Erreur écriture \n");
         exit(1);
     }
-
-    return;
+    sem_post(&s_ecriture);
+    pthread_exit(NULL);
 }
 
 int main(int argc, char* argv[])
@@ -121,6 +129,9 @@ int main(int argc, char* argv[])
     //char* memoire = argv[0];
 
     memoire = 6;
+    sem_init(&s_memoire,0,memoire);
+    sem_init(&s_ecriture,0,1);
+
     tab = calloc(2,sizeof(int));
 
     for(int i = 0; i< 2;i++){
@@ -133,17 +144,25 @@ int main(int argc, char* argv[])
     int fdTerminal = open("Txt/R_inter_archive.txt",O_RDWR);
     dup2(fdTerminal,0);
     char* ligne = litLigne(fdTerminal);
+
+    pthread_t thread_id[25]; 
+    int nbr_th = 0;
     
     while(strcmp(ligne, "erreur") != 0 ){
-        pthread_t thread_id; 
-        pthread_create(&thread_id, NULL, testNumero, ligne);
-        testNumero(ligne);
-
+        //Pour chaque Entrée lu : crée un nouveau Thread
+        fprintf(stderr, "Lecture %s \n", ligne);
+        pthread_create(&thread_id[nbr_th], NULL, testNumero, ligne);
         ligne = litLigne(fdTerminal);
+        nbr_th += 1;
+        
     }
 
-    
-    pthread_join(thread_id,NULL);
+    for(int i=0;i<nbr_th;i++){ //Attends la fin des threads
+        pthread_join(thread_id[i],NULL);
+    }
+
+
+    //thread_join(thread_id,NULL);
 
 
     // Tableau a 3 lignes : 1 ère ligne = libre (0 ou 1 ), 2ème ligne = Id du test, 3ème ligne = descripteur fichier
