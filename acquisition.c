@@ -2,10 +2,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
+
 #include "lectureEcriture.h"
 #include "message.h"
-
-#include <search.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -16,9 +16,7 @@ int ** tab;
 long long int * tabID;
 
 
-//fonction qui change la sortie en fonction de si c une demande ou une réponse
-
-void usage(char * basename) { // DUPLICATION A CHANGER
+void usage(char * basename) {
     fprintf(stderr,
         "usage : %s [<Taille mémoire> ]\n",
         basename);
@@ -83,7 +81,7 @@ int thDemande(char* numero){
  * Retourne le descripteur de fichier vers lequel l'on veut envoyer le fichier en fonction du numero et du type de demande
  * Numero : Numero Pcr, type : Demande ou Réponse
 */
-void testNumero(char * msg){
+void *testNumero(char * msg){
      
     char numero[255], type[255], valeur[255];
     int msgDecoupe = decoupe(msg, numero, type, valeur);
@@ -137,11 +135,15 @@ int main(int argc, char* argv[])
     char* ligne = litLigne(fdTerminal);
     
     while(strcmp(ligne, "erreur") != 0 ){
-
+        pthread_t thread_id; 
+        pthread_create(&thread_id, NULL, testNumero, ligne);
         testNumero(ligne);
 
         ligne = litLigne(fdTerminal);
     }
+
+    
+    pthread_join(thread_id,NULL);
 
 
     // Tableau a 3 lignes : 1 ère ligne = libre (0 ou 1 ), 2ème ligne = Id du test, 3ème ligne = descripteur fichier
