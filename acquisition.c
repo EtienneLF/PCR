@@ -16,6 +16,7 @@
 int memoire;
 int ** tab;
 long long int * tabID;
+char * local;
 //Création sémaphore
 sem_t s_memoire;
 sem_t s_ecriture;
@@ -92,7 +93,7 @@ int thDemande(char* numero){
 
     olddf = dup(0); //Duplique l'entrée dans un nouveau descripteur de fichier 
     inserTab(numero,olddf); //ajoute dans la table de routage
-    if(strcmp(num, "0001") == 0){ //Si les numéros du test correspond au serveur local, transmettre à Validation 
+    if(strcmp(num, local) == 0){ //Si les numéros du test correspond au serveur local, transmettre à Validation 
                                   //Sinon transmet à Inter_Archives
         fprintf(stderr, "Demande n°%s, transmie à Validation de %i\n" , numero,olddf);
         return fdValidation; //Retourne la sortie à utiliser
@@ -109,8 +110,8 @@ int thDemande(char* numero){
  * Fonction pour chaque nouveau Thread, Check le type de la demande (Demande ou Réponse) et envoie la demande vers la bonne destination
  * arg : msg, la demande de test PCR
 */
-void *testNumero(void * arg){
-    char * msg = (char *) arg; //Msg test PCR
+void testNumero(char * msg, int df){
+    //char * msg = (char *) arg; //Msg test PCR
 
     char numero[255], type[255], valeur[255];
     int msgDecoupe = decoupe(msg, numero, type, valeur); //Découpage du message
@@ -144,17 +145,28 @@ void *testNumero(void * arg){
         exit(1);
     }
     sem_post(&s_ecriture); //Sortie section critique
-    pthread_exit(NULL); //Fin des threads
+    
 }
 
+void *th_function(void * arg){
+    int df = *((int * ) arg); //
+    char* ligne = litLigne(df);
+    while(strcmp(ligne, "erreur") != 0 ){ //Tant qu'on ne lit pas une ligne vide
+        testNumero(ligne,df);
+        ligne = litLigne(df); //Lit la prochaine ligne  
+    }
+    pthread_exit(NULL); //Fin des threads
+}
 
 int main(int argc, char* argv[])
 { 
 
     if (argc != 1) usage(argv[0]); // Test nombre arguments
     //char* memoire = argv[0];
-
+    local = "0001";
     memoire = 6;
+    int nrb_terminal = 1;
+
     
     //Initialisation des sémaphores
     sem_init(&s_memoire,0,memoire);
@@ -170,16 +182,42 @@ int main(int argc, char* argv[])
     tabID = calloc(memoire, sizeof(long long int)); //Tableau qui stock le numéro du test Pcr en long long int
 
 
-    int fdTerminal = open("Txt/R_inter_archive.txt",O_RDWR); //temporaire ouverture Terminal
+    int fdTerminal = open("Txt/R_terminal.txt",O_RDWR); //temporaire ouverture Terminal
+    int fdInterArchives = open("Txt/R_inter_archive.txt",O_RDWR); //temporaire ouverture Terminal
+    int fdValidation = open("Txt/R_validation.txt",O_RDWR); //temporaire ouverture Terminal
 
-    dup2(fdTerminal,0); //relie Terminal à l'entrée stdin A SUPPR SI TUBE je pense  
+    pthread_t v_thread_id;
+    pthread_t i_thread_id;
+    pthread_t t_thread_id[nrb_terminal];
 
-    char* ligne = litLigne(fdTerminal); //Lire première ligne du fichier (prochainement : lire entrée tube)
+    
+    pthread_create(&i_thread_id, NULL, th_function, &fdInterArchives);
+    fprintf(stderr, "Thread Inter Archives ok \n");
+    for(int i=0; i<nrb_terminal;i++){
+        pthread_create(&t_thread_id[i], NULL, th_function, &fdTerminal);
+        fprintf(stderr, "Thread Terminal n°%d ok \n", i);
+    }
+    sleep(2);
+    pthread_create(&v_thread_id, NULL, th_function, &fdValidation);
+    fprintf(stderr, "Thread Validation ok \n");
+
+    pthread_join(v_thread_id,NULL);
+    fprintf(stderr, "Thread Validation déjà terminé\n");
+    pthread_join(i_thread_id,NULL);
+    fprintf(stderr, "Thread Inter Archives déjà terminé\n");
+    for(int i=0;i<nrb_terminal;i++){ //Attends la fin des threads en fonction du compteur
+        pthread_join(t_thread_id[i],NULL);
+        fprintf(stderr, "Thread Terminal n°%d déjà terminé \n", i);
+    }
+   
+    //dup2(fdTerminal,0); //relie Terminal à l'entrée stdin A SUPPR SI TUBE je pense  
+
+    /*char* ligne = litLigne(fdTerminal); //Lire première ligne du fichier (prochainement : lire entrée tube)
 
     pthread_t thread_id[25]; //Crée un tableau de 25 place pour les Thread_Id
     int nbr_th = 0; //Nombre de Thread qui seront crées
     
-    while(strcmp(ligne, "erreur") != 0 ){ //Tant qu'on ne lit une ligne vide
+    while(strcmp(ligne, "erreur") != 0 ){ //Tant qu'on ne lit pas une ligne vide
         pthread_create(&thread_id[nbr_th], NULL, testNumero, ligne);//crée un nouveau Thread qui lance la fonction testNumero avec l'argument ligne
         ligne = litLigne(fdTerminal); //Lit la prochaine ligne
         nbr_th += 1; //incrémente le compteur
@@ -190,7 +228,7 @@ int main(int argc, char* argv[])
         pthread_join(thread_id[i],NULL);
     }
 
-    /*for(int i = 0; i< 2;i++){
+    for(int i = 0; i< 2;i++){
         for(int j = 0; j< memoire;j++){
             fprintf(stderr, "%d ", tab[i][j]);
         }

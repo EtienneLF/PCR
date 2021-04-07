@@ -1,4 +1,4 @@
-all:	 TestMessage TestRedirection TestLectureEcriture terminal test validation acquisition
+all:	 TestMessage TestRedirection TestLectureEcriture terminal test validation acquisition interarchives
 
 message.o: message.c message.h
 	gcc -Wall -c message.c
@@ -14,6 +14,9 @@ validation.o: validation.c
 
 acquisition.o: acquisition.c
 	gcc -Wall -c acquisition.c -lpthread
+
+interarchives.o: interarchives.c
+	gcc -Wall -c interarchives.c
 
 TestMessage: message.o alea.o TestMessage.c
 	gcc -Wall TestMessage.c message.o alea.o -o  TestMessage
@@ -38,6 +41,9 @@ test: message.o alea.o lectureEcriture.o test.c
 
 acquisition: message.o lectureEcriture.o acquisition.o
 	gcc -Wall acquisition.c message.o lectureEcriture.o -o acquisition -lpthread
+
+interarchives: message.o lectureEcriture.o interarchives.o
+	gcc -Wall interarchives.c message.o lectureEcriture.o -o interarchives
 
 clean:	
 	rm -f *.o *~ 
