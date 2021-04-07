@@ -40,6 +40,21 @@ int main(int argc, char *argv[])
 
     printf("Seconds since January 1, 1970 = %ld\n", time(NULL));
 
+    int tab[] ={1,2,3};
+
+    for(int i =0; i<3; i++){
+        printf(" oui : %d\n", tab[i]);
+    }
+
+    int a = tab[2];
+    printf(" a : %d\n", a);
+    tab[2] = 45;
+    printf(" a : %d\n", a);
+
+    for(int i =0; i<3; i++){
+        printf(" oui : %d\n", tab[i]);
+    }
+
 
     return 0;
 } 
