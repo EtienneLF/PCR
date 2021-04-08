@@ -62,14 +62,17 @@ int main(int argc, char *argv[])
 
 
     int pid;
-    pid = fork();
 
-    if (pid != 0){
-        printf("Je suis le père\n");
-    }
-    else{
-        execlp("./terminal", "0", "1",NULL);
-        printf("execlp() n'a pas fonctionné\n");
+    for(int i = 0; i<2;i++)
+    {
+        pid = fork();
+        if (pid != 0){
+            //printf("Je suis le père\n");
+        }
+        else{
+                execlp("xterm", "xterm", "-e", "./terminal", "0", "1",NULL);
+                printf("execlp() n'a pas fonctionné\n");
+            }
     }
 
     return 0;

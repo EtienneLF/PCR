@@ -25,7 +25,7 @@ sem_t s_indice;
 
 void usage(char * basename) { //print l'usage de la fonction
     fprintf(stderr,
-        "usage : %s [<Taille mémoire> ]\n",
+        "usage : %s [<Taille mémoire>] [<Nom centre archivage>] [<Code de 4 chiffres>] [<Nom fichier résultats test PCR>] [<Nombre terminaux>]\n",
         basename);
     exit(1);
 }
@@ -78,20 +78,18 @@ void inserTab(char* numero, int olddf){
 /**
  * Retourne le descripteur de fichier vers lequel on veut envoyer le fichier depuis une Demande (Validation ou InterArchives)
  * Numero : Numero Pcr
+ * oldff : Descirpteur de fichier
 */
-int thDemande(char* numero){
+int thDemande(char* numero, int olddf){
     //Ouverture des fichiers 
     int fdValidation = open("Txt/E_validation.txt",O_WRONLY);
     int fd_IA = open("Txt/E_inter_archive.txt",O_WRONLY);
-    int olddf; //Sauvegarde de l'entrée
 
     //Retenir les 4 premiers numéro du test PCR
     char num[4];
     for (int i = 0; i<4; i++){
         num[i] = numero[i];
     }
-
-    olddf = dup(0); //Duplique l'entrée dans un nouveau descripteur de fichier 
     inserTab(numero,olddf); //ajoute dans la table de routage
     if(strcmp(num, local) == 0){ //Si les numéros du test correspond au serveur local, transmettre à Validation 
                                   //Sinon transmet à Inter_Archives
@@ -109,9 +107,9 @@ int thDemande(char* numero){
 /**
  * Fonction pour chaque nouveau Thread, Check le type de la demande (Demande ou Réponse) et envoie la demande vers la bonne destination
  * arg : msg, la demande de test PCR
+ * df : descripteur de fichier
 */
 void testNumero(char * msg, int df){
-    //char * msg = (char *) arg; //Msg test PCR
 
     char numero[255], type[255], valeur[255];
     int msgDecoupe = decoupe(msg, numero, type, valeur); //Découpage du message
@@ -124,7 +122,7 @@ void testNumero(char * msg, int df){
 
     if(strcmp(type, "Demande") == 0){ //Si le message est une Demande, Attends une place de libre (sémaphore taille mémoire) puis appelle la fonction ThDemande
         sem_wait(&s_memoire);
-        sortie = thDemande(numero); //Retourne descripteur fichier de la sortie voulu
+        sortie = thDemande(numero,df); //Retourne descripteur fichier de la sortie voulu
     }
     else if(strcmp(type, "Reponse") == 0){ //Si le message est une Réponse, Appelle la fonction ThReponse et Libère une place (sémaphore)
         sortie = thReponse(numero); //Retourne descripteur fichier de la sortie voulu
@@ -160,14 +158,15 @@ void *th_function(void * arg){
 
 int main(int argc, char* argv[])
 { 
+    if (argc != 6) usage(argv[0]); // Test nombre arguments
+    memoire = atoi(argv[1]); //nombre place en mémoire
+    char * name = argv[2]; //Nom du centre d'archivage
+    local = argv[3]; //Numéro test local
+    char * resulats_Pcr = argv[4]; //Nom fichier stockant les résultats
+    int nrb_terminal = atoi(argv[5]); //nbr de terminal crée
 
-    if (argc != 1) usage(argv[0]); // Test nombre arguments
-    //char* memoire = argv[0];
-    local = "0001";
-    memoire = 6;
-    int nrb_terminal = 1;
+    fprintf(stderr,"Centre d'archivage numéro : %s et de nom : %s crée, Résultat sotcké dans : %s\n",local,name,resulats_Pcr);
 
-    
     //Initialisation des sémaphores
     sem_init(&s_memoire,0,memoire);
     sem_init(&s_ecriture,0,1);
@@ -181,62 +180,31 @@ int main(int argc, char* argv[])
     }
     tabID = calloc(memoire, sizeof(long long int)); //Tableau qui stock le numéro du test Pcr en long long int
 
-
+    // A remplacer par des tubes après
     int fdTerminal = open("Txt/R_terminal.txt",O_RDWR); //temporaire ouverture Terminal
+    fprintf(stderr,"R_terminal : %d\n", fdTerminal);
     int fdInterArchives = open("Txt/R_inter_archive.txt",O_RDWR); //temporaire ouverture Terminal
+    fprintf(stderr,"R_inter_archive : %d\n", fdInterArchives);
     int fdValidation = open("Txt/R_validation.txt",O_RDWR); //temporaire ouverture Terminal
+    fprintf(stderr,"R_validation : %d\n", fdValidation);
 
     pthread_t v_thread_id;
     pthread_t i_thread_id;
     pthread_t t_thread_id[nrb_terminal];
-
     
     pthread_create(&i_thread_id, NULL, th_function, &fdInterArchives);
-    fprintf(stderr, "Thread Inter Archives ok \n");
     for(int i=0; i<nrb_terminal;i++){
         pthread_create(&t_thread_id[i], NULL, th_function, &fdTerminal);
-        fprintf(stderr, "Thread Terminal n°%d ok \n", i);
     }
     sleep(2);
     pthread_create(&v_thread_id, NULL, th_function, &fdValidation);
-    fprintf(stderr, "Thread Validation ok \n");
 
+    //Attentte de la fin des threads
     pthread_join(v_thread_id,NULL);
-    fprintf(stderr, "Thread Validation déjà terminé\n");
     pthread_join(i_thread_id,NULL);
-    fprintf(stderr, "Thread Inter Archives déjà terminé\n");
     for(int i=0;i<nrb_terminal;i++){ //Attends la fin des threads en fonction du compteur
         pthread_join(t_thread_id[i],NULL);
-        fprintf(stderr, "Thread Terminal n°%d déjà terminé \n", i);
     }
-   
-    //dup2(fdTerminal,0); //relie Terminal à l'entrée stdin A SUPPR SI TUBE je pense  
-
-    /*char* ligne = litLigne(fdTerminal); //Lire première ligne du fichier (prochainement : lire entrée tube)
-
-    pthread_t thread_id[25]; //Crée un tableau de 25 place pour les Thread_Id
-    int nbr_th = 0; //Nombre de Thread qui seront crées
-    
-    while(strcmp(ligne, "erreur") != 0 ){ //Tant qu'on ne lit pas une ligne vide
-        pthread_create(&thread_id[nbr_th], NULL, testNumero, ligne);//crée un nouveau Thread qui lance la fonction testNumero avec l'argument ligne
-        ligne = litLigne(fdTerminal); //Lit la prochaine ligne
-        nbr_th += 1; //incrémente le compteur
-        
-    }
-
-    for(int i=0;i<nbr_th;i++){ //Attends la fin des threads en fonction du compteur
-        pthread_join(thread_id[i],NULL);
-    }
-
-    for(int i = 0; i< 2;i++){
-        for(int j = 0; j< memoire;j++){
-            fprintf(stderr, "%d ", tab[i][j]);
-        }
-        fprintf(stderr, "\n");
-    }
-    for(int i = 0; i< memoire;i++){
-        fprintf(stderr, "%lli ", tabID[i]);
-    }*/
     
     //libère la mémoire des deux tableaux
     free(tab);

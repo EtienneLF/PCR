@@ -10,6 +10,16 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+void liaison(char* num){
+    int df = open("centre_archivage.txt", O_WRONLY);
+    int numPcr = atoi(num);
+    if(strcmp(num,"0001")==0){
+        fprintf(stderr, "oui");
+        char* ligne = strcat(num, " Pcr1");
+        fprintf(stderr,"non");
+        ecritLigne(df,ligne); 
+
+}
 
 int analyse4Chiffres(char *pointeur, char* message){
     char numero[255], type[255], valeur[255];
@@ -25,26 +35,19 @@ int analyse4Chiffres(char *pointeur, char* message){
         pointeur[i] = numero[i];
     }
 
+    //liaison(pointeur); //core dumped + stack smashing (?)
     return 0;
 }
 
-void liaison(char* num){
-    int df = open("centre_archivage.txt", O_WRONLY);
-    int numPcr = atoi(num);
-    if(numPcr == 0001){
-        char* ligne = strcat(num, " Pcr1");
-        ecritLigne(df,ligne); //rien n'est écrit sur le fichier --> à revoir
-    }
 
-}
 
-int main()
+int main(int argc, char* argv[])
 {
-    
     char* test = message("0001000000000000", "Demande", "13021");
     //|0001000000000001|Demande|13021| 
     char num[4];
     analyse4Chiffres(num,test);
-    fprintf(stderr,"Num : %s",num);
+    liaison(num);
+    fprintf(stderr,"Num : %s \n",num);
     return 0;
 }

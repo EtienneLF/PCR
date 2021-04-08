@@ -56,13 +56,13 @@ void usage(char * basename) // Print une erreur si pas assez d'argument mis
 int main(int argc, char* argv[])
 { 
     while(1){
-        char * Message = createMsg(); // Création du Message
-        printf("print : Voici le message : %s", Message); // Affichage du message
-
         if (argc != 3) usage(argv[0]); // Test nombre arguments
         int argv0,argv1;
         sscanf (argv[0],"%d",&argv0); //conversion argv[0] en int
         sscanf (argv[1],"%d",&argv1); //conversion argv[1] en int
+
+        char * Message = createMsg(); // Création du Message
+        fprintf(stderr," Voici le message : %s", Message); // Affichage du message
 
         dup2( argv0,0);        // Redirection de l'entrée
         dup2( argv1,1);        // Redirection de la sortie
@@ -75,15 +75,14 @@ int main(int argc, char* argv[])
         int msgDecoupe = decoupe(reponse, emeteur, type, valeur); //Découpe du message en 3 parties
 
         if(!msgDecoupe){ //Test le retour de la fonction découpe pour détecter une erreur
-            printf("print : Erreur de découpage!!\n");
+            printf("print : Erreur de découpage!\n");
             exit(1);
         }
-
         if( analyseValeur(valeur)) { //Si la valeur est 1
-            printf("Validé\n");
+            fprintf(stderr,"Validé\n");
         }
         else{ //Si la valeur est 0
-            printf("Refusé\n");
+            fprintf(stderr,"Refusé\n");
         }
     }
    return 0;
