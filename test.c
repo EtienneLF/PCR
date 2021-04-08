@@ -6,6 +6,7 @@
 #include "message.h"
 #include "lectureEcriture.h"
 #include <time.h>
+#include <unistd.h>
 
 #define MAX_SIZE 80
 
@@ -21,17 +22,21 @@ char* createMsg(){
     return msg;
 }
 
+
+
+
+
 int main(int argc, char *argv[])
 {
-    char * Message = createMsg();
+    /* char * Message = createMsg();
     printf("Voici le message : %s", Message);
 
     //nt fd = open("README",O_RDONLY);
-    /*char* ligne = litLigne(0);
+    //char* ligne = litLigne(0);
 
     ecritLigne(1,ligne);*/
 
-    time_t timestamp = time( NULL );
+    /* time_t timestamp = time( NULL );
     struct tm * pTime = localtime( & timestamp );
 
     char buffer[ MAX_SIZE ];
@@ -53,8 +58,19 @@ int main(int argc, char *argv[])
 
     for(int i =0; i<3; i++){
         printf(" oui : %d\n", tab[i]);
-    }
+    } */ 
 
+
+    int pid;
+    pid = fork();
+
+    if (pid != 0){
+        printf("Je suis le père\n");
+    }
+    else{
+        execlp("./terminal", "0", "1",NULL);
+        printf("execlp() n'a pas fonctionné\n");
+    }
 
     return 0;
 } 

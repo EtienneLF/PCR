@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
         int msgDecoupe = decoupe(reponse, emeteur, type, valeur); //Découpe le message en 3 parties
 
         if(!msgDecoupe){ //Test le retour de la fonction découpe pour détecter une erreur
-            printf("print : Erreur de découpage!!\n");
+            fprintf(stderr,"print : Erreur de découpage!!\n");
             exit(1);
         }
 
