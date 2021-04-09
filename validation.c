@@ -23,8 +23,10 @@ int main(int argc, char* argv[])
 { 
     if (argc != 3) usage(argv[0]); // Test nombre arguments
     int argv0,argv1;
-    sscanf (argv[0],"%d",&argv0); //conversion argv[0] en int
-    sscanf (argv[1],"%d",&argv1); //conversion argv[1] en int
+    sscanf (argv[1],"%d",&argv0); //conversion argv[0] en int
+    sscanf (argv[2],"%d",&argv1); //conversion argv[1] en int
+
+    fprintf(stderr,"les deux sorties : %d , %d\n",argv0,argv1);
 
     dup2( argv0,0);        // Redirection de l'entrée     
     dup2( argv1,1);        // Redirection de la sortie

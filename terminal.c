@@ -15,11 +15,19 @@
 char* createMsg()
 {
     char time[255];
+    char num[255];
 
     aleainit(); // Creation d'une demande de validation pour une durée de validité aléatoire
     sprintf(time,"%d",alea(1,50000)); //durée aléatoire
 
-    char *msg = message("0001000000000000", "Demande", time); //Création d'une demande avec une durée de validité aléatoire
+    sprintf(num,"%d",alea(1,3)); //durée aléatoire
+
+    char numero[17]; 
+    
+    strcat(numero,"000100000000000");
+    strcat(numero, num);
+
+    char *msg = message(numero, "Demande", time); //Création d'une demande avec une durée de validité aléatoire
 
     return msg;
 }
@@ -40,7 +48,7 @@ int analyseValeur(char* valeur /*valeur de fin du test*/)
     }
     
     else{ //Si la valeur n'est pas 0 ou 1
-        printf("print : Valeur non reconnue. \n");
+        printf("Valeur non reconnue. \n");
         exit(1);
     }
 }
@@ -58,8 +66,9 @@ int main(int argc, char* argv[])
     while(1){
         if (argc != 3) usage(argv[0]); // Test nombre arguments
         int argv0,argv1;
-        sscanf (argv[0],"%d",&argv0); //conversion argv[0] en int
-        sscanf (argv[1],"%d",&argv1); //conversion argv[1] en int
+        sscanf (argv[1],"%d",&argv0); //conversion argv[0] en int
+        sscanf (argv[2],"%d",&argv1); //conversion argv[1] en int
+        fprintf(stderr,"les deux sorties : %d , %d\n",argv0,argv1);
 
         char * Message = createMsg(); // Création du Message
         fprintf(stderr," Voici le message : %s", Message); // Affichage du message

@@ -17,6 +17,10 @@ int memoire;
 int ** tab;
 long long int * tabID;
 char * local;
+
+int df_Validation;
+int df_Inter_Archives;
+
 //Création sémaphore
 sem_t s_memoire;
 sem_t s_ecriture;
@@ -82,7 +86,7 @@ void inserTab(char* numero, int olddf){
 */
 int thDemande(char* numero, int olddf){
     //Ouverture des fichiers 
-    int fdValidation = open("Txt/E_validation.txt",O_WRONLY);
+    //int fdValidation = open("Txt/E_validation.txt",O_WRONLY);
     int fd_IA = open("Txt/E_inter_archive.txt",O_WRONLY);
 
     //Retenir les 4 premiers numéro du test PCR
@@ -90,11 +94,11 @@ int thDemande(char* numero, int olddf){
     for (int i = 0; i<4; i++){
         num[i] = numero[i];
     }
-    inserTab(numero,olddf); //ajoute dans la table de routage
+    inserTab(numero,olddf-1); //ajoute dans la table de routage
     if(strcmp(num, local) == 0){ //Si les numéros du test correspond au serveur local, transmettre à Validation 
                                   //Sinon transmet à Inter_Archives
         fprintf(stderr, "Demande n°%s, transmie à Validation de %i\n" , numero,olddf);
-        return fdValidation; //Retourne la sortie à utiliser
+        return df_Validation; //Retourne la sortie à utiliser
     }
     else{
         fprintf(stderr, "Demande n°%s, transmie à Inter_Archives de %i\n" , numero,olddf);
@@ -136,9 +140,8 @@ void testNumero(char * msg, int df){
     }
 
     sem_wait(&s_ecriture); //Section critique Redirection sortie + écriture
-    dup2(sortie,1); // Redirige la sortie
 
-    if( ! ecritLigne(1,msg)){ // Si erreur écriture
+    if( ! ecritLigne(sortie,msg)){ // Si erreur écriture
         fprintf(stderr, "Erreur écriture \n");
         exit(1);
     }
@@ -146,10 +149,12 @@ void testNumero(char * msg, int df){
     
 }
 
+
 void *th_function(void * arg){
-    int df = *((int * ) arg); //
+    int df = arg; //
     char* ligne = litLigne(df);
-    while(strcmp(ligne, "erreur") != 0 ){ //Tant qu'on ne lit pas une ligne vide
+    
+    while(1){ //Tant qu'on ne lit pas une ligne vide
         testNumero(ligne,df);
         ligne = litLigne(df); //Lit la prochaine ligne  
     }
@@ -181,27 +186,61 @@ int main(int argc, char* argv[])
     tabID = calloc(memoire, sizeof(long long int)); //Tableau qui stock le numéro du test Pcr en long long int
 
     // A remplacer par des tubes après
-    int fdTerminal = open("Txt/R_terminal.txt",O_RDWR); //temporaire ouverture Terminal
-    fprintf(stderr,"R_terminal : %d\n", fdTerminal);
-    int fdInterArchives = open("Txt/R_inter_archive.txt",O_RDWR); //temporaire ouverture Terminal
-    fprintf(stderr,"R_inter_archive : %d\n", fdInterArchives);
-    int fdValidation = open("Txt/R_validation.txt",O_RDWR); //temporaire ouverture Terminal
-    fprintf(stderr,"R_validation : %d\n", fdValidation);
+    //int fdTerminal = open("Txt/R_terminal.txt",O_RDWR); //temporaire ouverture Terminal
+    //int fdInterArchives = open("Txt/R_inter_archive.txt",O_RDWR); //temporaire ouverture Terminal
+    //int fdValidation = open("Txt/R_validation.txt",O_RDWR); //temporaire ouverture Terminal
 
     pthread_t v_thread_id;
-    pthread_t i_thread_id;
+    //pthread_t i_thread_id;
     pthread_t t_thread_id[nrb_terminal];
+
+    int pid;
     
-    pthread_create(&i_thread_id, NULL, th_function, &fdInterArchives);
+
+    int A_V[2];
+    pipe(A_V);
+    int V_A[2];
+    pipe(V_A);
+
+    df_Validation = A_V[1];
+
+    char str_A_V[2];
+    sprintf(str_A_V, "%d", A_V[0]);
+    char str_V_A[2];
+    sprintf(str_V_A, "%d", V_A[1]);
+
+    pid = fork();
+        if (pid == 0){
+            execlp("xterm", "xterm", "-e", "./validation", str_A_V, str_V_A,NULL);
+            fprintf(stderr,"execlp() n'a pas fonctionné\n");
+        }
+    pthread_create(&v_thread_id, NULL, th_function, (void *)(intptr_t) V_A[0]);
+
+    //pthread_create(&i_thread_id, NULL, th_function, &fdInterArchives);
     for(int i=0; i<nrb_terminal;i++){
-        pthread_create(&t_thread_id[i], NULL, th_function, &fdTerminal);
+        int A_T[2];
+        pipe(A_T);
+        int T_A[2];
+        pipe(T_A);
+
+        char str_A_T[2];
+        sprintf(str_A_T, "%d", A_T[0]);
+
+        char str_T_A[2];
+        sprintf(str_T_A, "%d", T_A[1]);
+        
+        pid = fork();
+        if (pid == 0){
+            execlp("xterm", "xterm", "-e", "./terminal", str_A_T, str_T_A,NULL);
+            fprintf(stderr,"execlp() n'a pas fonctionné\n");
+        }
+        pthread_create(&t_thread_id[i], NULL, th_function, (void *)(intptr_t) T_A[0]);
     }
-    sleep(2);
-    pthread_create(&v_thread_id, NULL, th_function, &fdValidation);
+
 
     //Attentte de la fin des threads
     pthread_join(v_thread_id,NULL);
-    pthread_join(i_thread_id,NULL);
+    //pthread_join(i_thread_id,NULL);
     for(int i=0;i<nrb_terminal;i++){ //Attends la fin des threads en fonction du compteur
         pthread_join(t_thread_id[i],NULL);
     }
