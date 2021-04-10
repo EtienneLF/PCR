@@ -26,6 +26,10 @@ sem_t s_memoire;
 sem_t s_ecriture;
 sem_t s_indice;
 
+struct arg_st {
+    int arg1;
+    int arg2;
+};
 
 void usage(char * basename) { //print l'usage de la fonction
     fprintf(stderr,
@@ -85,16 +89,12 @@ void inserTab(char* numero, int olddf){
  * oldff : Descirpteur de fichier
 */
 int thDemande(char* numero, int olddf){
-    //Ouverture des fichiers 
-    //int fdValidation = open("Txt/E_validation.txt",O_WRONLY);
-    int fd_IA = open("Txt/E_inter_archive.txt",O_WRONLY);
-
     //Retenir les 4 premiers numéro du test PCR
     char num[4];
     for (int i = 0; i<4; i++){
         num[i] = numero[i];
     }
-    inserTab(numero,olddf-1); //ajoute dans la table de routage
+    inserTab(numero,olddf); //ajoute dans la table de routage
     if(strcmp(num, local) == 0){ //Si les numéros du test correspond au serveur local, transmettre à Validation 
                                   //Sinon transmet à Inter_Archives
         fprintf(stderr, "Demande n°%s, transmie à Validation de %i\n" , numero,olddf);
@@ -102,7 +102,7 @@ int thDemande(char* numero, int olddf){
     }
     else{
         fprintf(stderr, "Demande n°%s, transmie à Inter_Archives de %i\n" , numero,olddf);
-        return fd_IA;//Retourne la sortie à utiliser
+        return df_Inter_Archives;//Retourne la sortie à utiliser
         }
     return -1; //Si problème
 }
@@ -113,7 +113,7 @@ int thDemande(char* numero, int olddf){
  * arg : msg, la demande de test PCR
  * df : descripteur de fichier
 */
-void testNumero(char * msg, int df){
+void testNumero(char * msg, int fd){
 
     char numero[255], type[255], valeur[255];
     int msgDecoupe = decoupe(msg, numero, type, valeur); //Découpage du message
@@ -126,7 +126,7 @@ void testNumero(char * msg, int df){
 
     if(strcmp(type, "Demande") == 0){ //Si le message est une Demande, Attends une place de libre (sémaphore taille mémoire) puis appelle la fonction ThDemande
         sem_wait(&s_memoire);
-        sortie = thDemande(numero,df); //Retourne descripteur fichier de la sortie voulu
+        sortie = thDemande(numero,fd); //Retourne descripteur fichier de la sortie voulu
     }
     else if(strcmp(type, "Reponse") == 0){ //Si le message est une Réponse, Appelle la fonction ThReponse et Libère une place (sémaphore)
         sortie = thReponse(numero); //Retourne descripteur fichier de la sortie voulu
@@ -150,13 +150,16 @@ void testNumero(char * msg, int df){
 }
 
 
-void *th_function(void * arg){
-    int df = arg; //
-    char* ligne = litLigne(df);
+void *th_function(void * args){
+    /*fprintf(stderr,"%d\n", ((struct arg_st*)args) -> arg1);
+    fprintf(stderr,"%d\n", ((struct arg_st*)args) -> arg2);*/
+    int df = ((struct arg_st*)args) -> arg1;
+    int fd = ((struct arg_st*)args) -> arg2;
     
+
     while(1){ //Tant qu'on ne lit pas une ligne vide
-        testNumero(ligne,df);
-        ligne = litLigne(df); //Lit la prochaine ligne  
+        char * ligne = litLigne(df); //Lit la prochaine ligne  
+        testNumero(ligne,fd);
     }
     pthread_exit(NULL); //Fin des threads
 }
@@ -187,16 +190,16 @@ int main(int argc, char* argv[])
 
     // A remplacer par des tubes après
     //int fdTerminal = open("Txt/R_terminal.txt",O_RDWR); //temporaire ouverture Terminal
-    //int fdInterArchives = open("Txt/R_inter_archive.txt",O_RDWR); //temporaire ouverture Terminal
+    df_Inter_Archives = open("Txt/R_inter_archive.txt",O_RDWR); //temporaire ouverture Terminal
     //int fdValidation = open("Txt/R_validation.txt",O_RDWR); //temporaire ouverture Terminal
 
     pthread_t v_thread_id;
     //pthread_t i_thread_id;
     pthread_t t_thread_id[nrb_terminal];
+    //pthread_create(&i_thread_id, NULL, th_function, &df_Inter_Archives);
 
+    //Création procéssus validation + thread
     int pid;
-    
-
     int A_V[2];
     pipe(A_V);
     int V_A[2];
@@ -204,39 +207,50 @@ int main(int argc, char* argv[])
 
     df_Validation = A_V[1];
 
-    char str_A_V[2];
+    char * str_A_V = calloc(sizeof(char),2);
     sprintf(str_A_V, "%d", A_V[0]);
-    char str_V_A[2];
+    char * str_V_A = calloc(sizeof(char),2);
     sprintf(str_V_A, "%d", V_A[1]);
+    struct arg_st *args = (struct arg_st *)malloc(sizeof(struct arg_st));
+    args -> arg1 = V_A[0];
+    args -> arg2 = A_V[1];
 
     pid = fork();
         if (pid == 0){
-            execlp("xterm", "xterm", "-e", "./validation", str_A_V, str_V_A,NULL);
+            execlp("./validation", "./validation", str_A_V, str_V_A,NULL);
             fprintf(stderr,"execlp() n'a pas fonctionné\n");
         }
-    pthread_create(&v_thread_id, NULL, th_function, (void *)(intptr_t) V_A[0]);
+    pthread_create(&v_thread_id, NULL, th_function, (void *)args);
+    free(str_V_A);
+    free(str_A_V);
 
-    //pthread_create(&i_thread_id, NULL, th_function, &fdInterArchives);
     for(int i=0; i<nrb_terminal;i++){
         int A_T[2];
         pipe(A_T);
         int T_A[2];
         pipe(T_A);
 
-        char str_A_T[2];
+        char * str_A_T = calloc(sizeof(char),2);
         sprintf(str_A_T, "%d", A_T[0]);
 
-        char str_T_A[2];
+        char * str_T_A = calloc(sizeof(char),2);
         sprintf(str_T_A, "%d", T_A[1]);
+
+        struct arg_st *args = (struct arg_st *)malloc(sizeof(struct arg_st));
+        args -> arg1 = T_A[0];
+        args -> arg2 = A_T[1];
         
+        fprintf(stderr,"str_A_T : %i , %i str_T_A : %i , %i\n",A_T[0],A_T[1],T_A[0],T_A[1]);
+
         pid = fork();
         if (pid == 0){
             execlp("xterm", "xterm", "-e", "./terminal", str_A_T, str_T_A,NULL);
             fprintf(stderr,"execlp() n'a pas fonctionné\n");
         }
-        pthread_create(&t_thread_id[i], NULL, th_function, (void *)(intptr_t) T_A[0]);
+        free(str_T_A);
+        free(str_A_T);
+        pthread_create(&t_thread_id[i], NULL, th_function, (void *)args);
     }
-
 
     //Attentte de la fin des threads
     pthread_join(v_thread_id,NULL);
@@ -244,10 +258,11 @@ int main(int argc, char* argv[])
     for(int i=0;i<nrb_terminal;i++){ //Attends la fin des threads en fonction du compteur
         pthread_join(t_thread_id[i],NULL);
     }
-    
+
     //libère la mémoire des deux tableaux
     free(tab);
     free(tabID);
+    free(args);
    
    return 0;
 }

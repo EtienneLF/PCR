@@ -18,9 +18,9 @@ char* createMsg()
     char num[255];
 
     aleainit(); // Creation d'une demande de validation pour une durée de validité aléatoire
-    sprintf(time,"%d",alea(1,50000)); //durée aléatoire
+    sprintf(time,"%d",alea(1615888497,1615988897)); //durée aléatoire
 
-    sprintf(num,"%d",alea(1,3)); //durée aléatoire
+    sprintf(num,"%d",alea(1,9)); //durée aléatoire
 
     char numero[17]; 
     
@@ -63,36 +63,34 @@ void usage(char * basename) // Print une erreur si pas assez d'argument mis
 
 int main(int argc, char* argv[])
 { 
-    while(1){
-        if (argc != 3) usage(argv[0]); // Test nombre arguments
-        int argv0,argv1;
-        sscanf (argv[1],"%d",&argv0); //conversion argv[0] en int
-        sscanf (argv[2],"%d",&argv1); //conversion argv[1] en int
-        fprintf(stderr,"les deux sorties : %d , %d\n",argv0,argv1);
+    if (argc != 3) usage(argv[0]); // Test nombre arguments
+    int argv0,argv1;
+    sscanf (argv[1],"%d",&argv0); //conversion argv[0] en int
+    sscanf (argv[2],"%d",&argv1); //conversion argv[1] en int
+    fprintf(stderr,"les deux sorties : %i , %i\n",argv0,argv1);
 
-        char * Message = createMsg(); // Création du Message
-        fprintf(stderr," Voici le message : %s", Message); // Affichage du message
+    char * Message = createMsg(); // Création du Message
+    fprintf(stderr," Voici le message : %s", Message); // Affichage du message
 
-        dup2( argv0,0);        // Redirection de l'entrée
-        dup2( argv1,1);        // Redirection de la sortie
+    dup2( argv0,0);        // Redirection de l'entrée
+    dup2( argv1,1);        // Redirection de la sortie
 
-        ecritLigne(1,Message); //envoie le message
+    ecritLigne(1,Message); //envoie le message
+    char* reponse = litLigne(0); // Lit la réponse
 
-        char* reponse = litLigne(0); // Lit la réponse
+    char emeteur[255], type[255], valeur[255];
+    int msgDecoupe = decoupe(reponse, emeteur, type, valeur); //Découpe du message en 3 parties
 
-        char emeteur[255], type[255], valeur[255];
-        int msgDecoupe = decoupe(reponse, emeteur, type, valeur); //Découpe du message en 3 parties
-
-        if(!msgDecoupe){ //Test le retour de la fonction découpe pour détecter une erreur
-            printf("print : Erreur de découpage!\n");
-            exit(1);
-        }
-        if( analyseValeur(valeur)) { //Si la valeur est 1
-            fprintf(stderr,"Validé\n");
-        }
-        else{ //Si la valeur est 0
-            fprintf(stderr,"Refusé\n");
-        }
+    if(!msgDecoupe){ //Test le retour de la fonction découpe pour détecter une erreur
+        printf("print : Erreur de découpage!\n");
+        exit(1);
     }
+    if( analyseValeur(valeur)) { //Si la valeur est 1
+        fprintf(stderr,"Validé\n");
+    }
+    else{ //Si la valeur est 0
+        fprintf(stderr,"Refusé\n");
+    }
+    while(1);
    return 0;
 }
