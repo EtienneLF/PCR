@@ -11,6 +11,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+
+/**
+ * Vérification du nombre d'argument passé en paramètre
+ **/
 void usage(char * basename) { 
     fprintf(stderr,
         "usage : %s [<programme 1> [<programme 2>]]\n",

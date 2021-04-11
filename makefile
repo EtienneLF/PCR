@@ -43,7 +43,7 @@ acquisition: message.o lectureEcriture.o acquisition.o
 	gcc -Wall acquisition.c message.o lectureEcriture.o -o acquisition -lpthread
 
 interarchives: message.o lectureEcriture.o interarchives.o
-	gcc -Wall interarchives.c message.o lectureEcriture.o -o interarchives
+	gcc -Wall interarchives.c message.o lectureEcriture.o -o interarchives -lpthread
 
 clean:	
 	rm -f *.o *~ 

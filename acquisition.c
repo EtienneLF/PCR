@@ -23,7 +23,6 @@ int df_Inter_Archives;
 
 //Création sémaphore
 sem_t s_memoire;
-sem_t s_ecriture;
 sem_t s_indice;
 
 struct arg_st {
@@ -33,14 +32,14 @@ struct arg_st {
 
 void usage(char * basename) { //print l'usage de la fonction
     fprintf(stderr,
-        "usage : %s [<Taille mémoire>] [<Nom centre archivage>] [<Code de 4 chiffres>] [<Nom fichier résultats test PCR>] [<Nombre terminaux>]\n",
+        "usage : %s [<Taille mémoire>] [<Nom centre archivage>] [<Code de 4 chiffres>] [<Nom fichier résultats test PCR>] [Nombre terminal] [<Entrée Inter_Archives>] [<Sortie Inter_Archives>]\n",
         basename);
     exit(1);
 }
 
 
 /**
- * Retourne le descripteur de fichier vers lequel on veut envoyer le fichier depuis une Demande (Validation ou InterArchives)
+ * Retourne le descripteur de fichier correspondant dans la mémoire au numéro de test passé en paramètre
  * Numero : Numero Pcr
 */
 int thReponse(char* numero){
@@ -107,7 +106,6 @@ int thDemande(char* numero, int olddf){
     return -1; //Si problème
 }
 
-
 /**
  * Fonction pour chaque nouveau Thread, Check le type de la demande (Demande ou Réponse) et envoie la demande vers la bonne destination
  * arg : msg, la demande de test PCR
@@ -135,20 +133,16 @@ void testNumero(char * msg, int fd){
     }
 
     if(sortie == -1){ // Si erreur Open
-        fprintf(stderr, "Erreur Open\n");
+        fprintf(stderr, "Sortie = -1 Erreur fonction testNumero Acquisition\n");
         exit(1);
     }
-
-    sem_wait(&s_ecriture); //Section critique Redirection sortie + écriture
 
     if( ! ecritLigne(sortie,msg)){ // Si erreur écriture
         fprintf(stderr, "Erreur écriture \n");
         exit(1);
     }
-    sem_post(&s_ecriture); //Sortie section critique
     
 }
-
 
 void *th_function(void * args){
     /*fprintf(stderr,"%d\n", ((struct arg_st*)args) -> arg1);
@@ -157,7 +151,7 @@ void *th_function(void * args){
     int fd = ((struct arg_st*)args) -> arg2;
     
 
-    while(1){ //Tant qu'on ne lit pas une ligne vide
+    while(1){
         char * ligne = litLigne(df); //Lit la prochaine ligne  
         testNumero(ligne,fd);
     }
@@ -166,18 +160,19 @@ void *th_function(void * args){
 
 int main(int argc, char* argv[])
 { 
-    if (argc != 6) usage(argv[0]); // Test nombre arguments
+    if (argc != 8) usage(argv[0]); // Test nombre arguments
     memoire = atoi(argv[1]); //nombre place en mémoire
     char * name = argv[2]; //Nom du centre d'archivage
     local = argv[3]; //Numéro test local
     char * resulats_Pcr = argv[4]; //Nom fichier stockant les résultats
     int nrb_terminal = atoi(argv[5]); //nbr de terminal crée
+    int I_A = atoi(argv[6]);
+    df_Inter_Archives = atoi(argv[7]);
 
     fprintf(stderr,"Centre d'archivage numéro : %s et de nom : %s crée, Résultat sotcké dans : %s\n",local,name,resulats_Pcr);
 
     //Initialisation des sémaphores
     sem_init(&s_memoire,0,memoire);
-    sem_init(&s_ecriture,0,1);
     sem_init(&s_indice,0,1);
 
     //Initialisation Tableau Mémoire
@@ -188,15 +183,13 @@ int main(int argc, char* argv[])
     }
     tabID = calloc(memoire, sizeof(long long int)); //Tableau qui stock le numéro du test Pcr en long long int
 
-    // A remplacer par des tubes après
-    //int fdTerminal = open("Txt/R_terminal.txt",O_RDWR); //temporaire ouverture Terminal
-    df_Inter_Archives = open("Txt/R_inter_archive.txt",O_RDWR); //temporaire ouverture Terminal
-    //int fdValidation = open("Txt/R_validation.txt",O_RDWR); //temporaire ouverture Terminal
-
     pthread_t v_thread_id;
-    //pthread_t i_thread_id;
+    pthread_t i_thread_id;
     pthread_t t_thread_id[nrb_terminal];
-    //pthread_create(&i_thread_id, NULL, th_function, &df_Inter_Archives);
+    struct arg_st *args_I = (struct arg_st *)malloc(sizeof(struct arg_st));
+    args_I -> arg1 = I_A;
+    args_I -> arg2 = df_Inter_Archives;
+    pthread_create(&i_thread_id, NULL, th_function, (void *)args_I);
 
     //Création procéssus validation + thread
     int pid;
@@ -223,6 +216,7 @@ int main(int argc, char* argv[])
     pthread_create(&v_thread_id, NULL, th_function, (void *)args);
     free(str_V_A);
     free(str_A_V);
+    
 
     for(int i=0; i<nrb_terminal;i++){
         int A_T[2];
