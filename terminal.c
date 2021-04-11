@@ -7,37 +7,49 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <time.h>
 
 /**
  * Création du message dans le format |Numéro_du_test|Type|Valeur|
+ * @param num : numéro du test
  **/
-char* createMsg()
-{
+char* createMsg(char* num){
     char time[255];
-    char num[255];
 
-    aleainit(); // Creation d'une demande de validation pour une durée de validité aléatoire
-    sprintf(time,"%d",alea(1615888497,1615988897)); //durée aléatoire
+    aleainit();// Creation d'une demande de validation pour une durée de validité aléatoire
+    sprintf(time,"%d",alea(1,50000)); //durée aléatoire
 
-    sprintf(num,"%d",alea(1,9)); //durée aléatoire
-
-    char numero[17]; 
-    
-    strcat(numero,"000100000000000");
-    strcat(numero, num);
-
-    char *msg = message(numero, "Demande", time); //Création d'une demande avec une durée de validité aléatoire
+    char *msg = message(num, "Demande", time);
 
     return msg;
+}
+
+/**
+ * Génère une ligne aléatoire à partir d'un descripteur de fichier
+ * @param df: descripteur de fichier
+ * @param num: numéro de la ligne
+ **/
+char* ligneAleatoire(int df, int num){
+    char* lignePCR;
+
+    for (int i =0; i<=num;i++){
+        lignePCR = litLigne(df);
+    }
+    
+    return lignePCR;
 }
 
 /**
  * Analyse de la réponse
  * Retourne 1 si test valide
  * Retourne 0 si test refusé
-*/
-int analyseValeur(char* valeur /*valeur de fin du test*/)
+ * @param valeur: valeur de la fin du test
+ **/
+int analyseValeur(char* valeur)
 {
     if(strcmp(valeur,"0")==0){//Le test PCR est refusé
         return 0;
@@ -53,29 +65,65 @@ int analyseValeur(char* valeur /*valeur de fin du test*/)
     }
 }
 
-void usage(char * basename) // Print une erreur si pas assez d'argument mis
+/**
+ * Compte le nombre de ligne dans un descripteur de fichier
+ * @param nomFichier: descripteur de fichier 
+ **/
+int compteLigne(char * nomFichier){
+    int df = open(nomFichier,O_RDONLY);
+    char * ligne = litLigne(df);
+    int temp = 0;
+    while(strcmp(ligne, "erreur") != 0){
+        temp +=1;
+        ligne = litLigne(df);
+    }
+    
+    return temp;
+}
+
+/**
+ * Print l'erreur si le nombre d'argument passé est insuffisant
+ * @param basename: argument
+ **/
+void usage(char * basename)
 { 
     fprintf(stderr,
-        "usage : %s [<programme 1> [<programme 2>]]\n",
+        "usage : %s [<Descripteur fichier Entrée> [<Descripteur fichier Sortie>]\n",
         basename);
     exit(1);
 }
 
 int main(int argc, char* argv[])
 { 
+    //Demande
     if (argc != 3) usage(argv[0]); // Test nombre arguments
-    int argv0,argv1;
-    sscanf (argv[1],"%d",&argv0); //conversion argv[0] en int
-    sscanf (argv[2],"%d",&argv1); //conversion argv[1] en int
-    fprintf(stderr,"les deux sorties : %i , %i\n",argv0,argv1);
+    int argv1,argv2;
+    sscanf (argv[1],"%d",&argv1); //conversion argv[0] en int
+    sscanf (argv[2],"%d",&argv2); //conversion argv[1] en int
+    fprintf(stderr,"les deux sorties : %i , %i\n",argv1,argv2);
 
-    char * Message = createMsg(); // Création du Message
-    fprintf(stderr," Voici le message : %s", Message); // Affichage du message
+    int nbrLigne = compteLigne("Liste_test.txt");
+    int fd = open("Liste_test.txt",O_RDONLY);
+    aleainit();
+    int aleaNum = alea(0,nbrLigne-1); 
+    char * ligne = ligneAleatoire(fd, aleaNum);
+    
+    //Création du message
+    char* num = calloc(sizeof(char),16);
+    for (int i =0; i < 16; i++){ //Récupération des 16 chiffres qui compose le numéro du test
+        num[i] = ligne[i];
+    }
 
-    dup2( argv0,0);        // Redirection de l'entrée
-    dup2( argv1,1);        // Redirection de la sortie
+    char* msg = createMsg(num);
+    free(num);
+    fprintf(stderr," Voici le message : %s", msg); // Affichage du message
+    
+    dup2( argv1,0);        // Redirection de l'entrée
+    dup2( argv2,1);       // Redirection de la sortie
 
-    ecritLigne(1,Message); //envoie le message
+    ecritLigne(1,msg); //envoie le message
+
+    //Réponse
     char* reponse = litLigne(0); // Lit la réponse
 
     char emeteur[255], type[255], valeur[255];
@@ -91,6 +139,9 @@ int main(int argc, char* argv[])
     else{ //Si la valeur est 0
         fprintf(stderr,"Refusé\n");
     }
-    while(1);
+
+    close(fd); //Fermeture du descripteur de fichier
+    while(1); 
+
    return 0;
 }

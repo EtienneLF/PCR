@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <errno.h>
 
 #include "message.h"
 #include "lectureEcriture.h"
@@ -18,8 +19,6 @@ long long int * tabID;
 int memoire;
 int nbr_acqui;
 
-//int tab_temp[2][3] = { {0001,0002,0003}  , {1,25,94} };
-
 //Création sémaphore
 sem_t s_memoire;
 sem_t s_indice;
@@ -30,7 +29,42 @@ struct arg_st {
 };
 
 /**
- * Retourne le numéro de l'indice du tableau contenant les descripteurs de ficiers
+ * Decoupe du message 
+ * Retourne 1 si il n'y a pas eu de problème
+ * Retourne 0 si il y a eu un problème - errno est mis � EINVAL dans ce cas.
+ * @param message: Source a découper
+ * @param nServ: n° du Serveur PCR concerne
+ * @param nbr_t: Nombre Terminal
+ * @param nom_Fichier: Nom fichier
+ * @param nom_Serveur: Nom du serveur
+ * ATTENTION:
+ *     Les variables nServ, nbr_t, nom_Fichier et nom_Serveur doivent 
+ * être allouées avant l'appel à decoupe
+ */
+int decoupe2(char *message, char *nServ, char *nbr_t, char *nom_Fichier, char *nom_Serveur)
+{
+  int nb=sscanf(message, "%s %s %s %s\n", nServ, nbr_t, nom_Fichier,nom_Serveur);
+  if (nb == 4)
+    return 1;
+  else  {
+    errno = EINVAL;
+    return 0;
+  }
+}
+
+/**
+ * Print l'erreur si le nombre d'argument passé est insuffisant
+ * @param basename: argument
+ **/
+void usage(char * basename) { //print l'usage de la fonction
+    fprintf(stderr,
+        "usage : %s [<Taille mémoire>] [<Nom fichier config>]\n",
+        basename);
+    exit(1);
+}
+
+/**
+ * Retourne le numéro de l'indice du tableau contenant les descripteurs de fichiers
  **/
 int indice(){
     for(int i = 0; i<memoire;i++){ //Pour chaque case regarde si tab[0][i] == 0, si oui retourne l'indice
@@ -43,7 +77,8 @@ int indice(){
 
 /**
  * Ajoute dans la table de routage le numéro du test Pcr et le descripteur de fichier pour le renvoyer
- * char * numero : Numero Pcr, int olddf : Duplicata du descripteur de l'entrée
+ * @param numero : Numero Pcr
+ * @param olddf : Duplicata du descripteur de l'entrée
 */
 void inserTab(char* numero, int olddf){
     sem_wait(&s_indice); //Entrée zone critique 
@@ -54,6 +89,12 @@ void inserTab(char* numero, int olddf){
     tabID[i] = strtoll(numero,NULL,10); //Ajoute le numéro du test PCR en long long int dans la table
 }
 
+
+/**
+ *  Associe les demandes au descripteur de fichier correspondant
+ * @param numero: numéro du test
+ * @param olddf: descripteur de fichier que l'on doit rajouter ds la table de routage
+ **/
 int associationDemande(char* numero, int olddf){
     //Retenir les 4 premiers numéro du test PCR
     char num[4];
@@ -64,7 +105,7 @@ int associationDemande(char* numero, int olddf){
 
     //Associe num -> df dans tab_temp retourne dfd
     for (int i = 0; i<nbr_acqui; i ++){
-        if (atoi(num) == tab_df_acqui[0][i]){
+        if (atoi(num) == tab_df_acqui[0][i]){ //si les 4 premiers chiffres du test correspondent à ceux stocker ds le tableau
             fprintf(stderr, "Demande n°%s, transmie à Acquisition n°%i de %i\n" , numero,atoi(num),olddf);
             return tab_df_acqui[1][i];
         }
@@ -74,7 +115,7 @@ int associationDemande(char* numero, int olddf){
 
 /**
  * Retourne le descripteur de fichier correspondant dans la mémoire au numéro de test passé en paramètre
- * Numero : Numero Pcr
+ * @param numero : Numero Pcr
 */
 int associationReponse(char* numero){
     for(int i = 0; i < sizeof(*tabID) ;i++){ //Pour chaque numéro de test PCR stocké dans la table de routage
@@ -88,11 +129,17 @@ int associationReponse(char* numero){
     return -1;
 }
 
+
+/**
+ * Analyse le type de la requête
+ * @param msg: Message
+ * @param fd: descripteur de fichier
+ **/
 void testType(char * msg, int fd){
 
     char numero[255], type[255], valeur[255];
     int msgDecoupe = decoupe(msg, numero, type, valeur); //Découpage du message
-    int sortie ;
+    int sortie;
 
     if(!msgDecoupe){ //Test le retour de la fonction découpe pour détecter une erreur
         fprintf(stderr, "Erreur de découpage!!\n");
@@ -121,6 +168,9 @@ void testType(char * msg, int fd){
     
 }
 
+/**
+ * 
+ * */
 void *th_function(void * args){
     int df = ((struct arg_st*)args) -> arg1;
     int fd = ((struct arg_st*)args) -> arg2;
@@ -134,11 +184,13 @@ void *th_function(void * args){
 
 int main(int argc, char* argv[])
 {    
-    char * memoirestr = "6";
-    memoire = 6; 
-    //nbr_acqui = 3;
-    char * name = "Pcr.txt";
-    char * nbr_terminal = "2";
+    if (argc != 3) usage(argv[0]); // Test nombre arguments
+
+    char * memoirestr = argv[1];
+    memoire = atoi(memoirestr);
+    //char * nom_centre = argv[2];
+    //char * name = "Pcr.txt";
+    //char * nbr_terminal = "1";
 
     //Initialisation des sémaphores
     sem_init(&s_memoire,0,memoire);
@@ -150,14 +202,7 @@ int main(int argc, char* argv[])
         tab_memoire[i] = calloc(memoire, sizeof(int));
     }
 
-
     tabID = calloc(sizeof(long long int),memoire); //Tableau qui stock le numéro du test Pcr en long long int
-
-    //|0001000000000001|Demande|13021| 
-    //int id = recuperation4Chiffres("|0001000000000001|Demande|13021|");
-    //testType("|0001000000000001|Demande|13021|",0);
-    //testType("|0001000000000001|Reponse|1|",0);
-    //fprintf(stderr, "Voici les 4 premiers chiffres: %d\n",atoi(num));
 
     int df = open("centre_archivage.txt", O_RDONLY);
     char* ligne = litLigne(df);
@@ -176,25 +221,19 @@ int main(int argc, char* argv[])
     }
 
     df = open("centre_archivage.txt", O_RDONLY);
-    char * num = calloc(sizeof(char),4);
+    //char * num = calloc(sizeof(char),4);
 
     for(int i = 0; i<nbr_acqui; i++){
         ligne = litLigne(df);
-        for (int i =0; i<4; i++){ //lire les 4 num du fichier
-            num[i] = ligne[i];
-        }
-
-        char* centre =  calloc(sizeof(char),strlen(ligne)-6);
-        for (int i = 0; i< strlen(ligne)-1; i++){
-            centre[i] = ligne[i+5];
-        }        
+        char nume[255], nbr_t[255], nom_fichier[255], nom_Serveur[255];
+        decoupe2(ligne,nume,nbr_t,nom_fichier,nom_Serveur);    
 
         int I_A[2];
         pipe(I_A);
         int A_I[2];
         pipe(A_I);
 
-        tab_df_acqui[0][i] = atoi(num);
+        tab_df_acqui[0][i] = atoi(nume);
         tab_df_acqui[1][i] = I_A[1]; //Stock dans le tableau les futurs valeurs
 
         char * str_I_A = calloc(sizeof(char),2);
@@ -206,19 +245,19 @@ int main(int argc, char* argv[])
         struct arg_st *args = (struct arg_st *)malloc(sizeof(struct arg_st));
         args -> arg1 = A_I[0];
         args -> arg2 = I_A[1];
-        
-        fprintf(stderr,"str_A_T : %i , %i str_T_A : %i , %i\n",I_A[0],I_A[1],A_I[0],A_I[1]);
+
+        fprintf(stderr,"%s %s %s %s %s %s %s\n", memoirestr, nom_Serveur, nume, nom_fichier, nbr_t,str_I_A, str_A_I);
 
         int pid = fork();
         if (pid == 0){
-            execlp("xterm", "xterm", "-e", "./acquisition", memoirestr, centre, num, name, nbr_terminal,str_I_A, str_A_I,NULL);
+            execlp("xterm", "xterm", "-e", "./acquisition", memoirestr, nom_Serveur, nume, nom_fichier, nbr_t,str_I_A, str_A_I,NULL);
             fprintf(stderr,"execlp() n'a pas fonctionné\n");
         }
         free(str_I_A);
         free(str_A_I);
         pthread_create(&thread_id[i], NULL, th_function, (void *)args);
 
-        fprintf(stderr,"Numéro %s associé au centre %s\n", num, centre);
+        fprintf(stderr,"Numéro %s associé au centre %s\n", nume, nom_Serveur);
     }
 
     for(int i=0;i<nbr_acqui;i++){ //Attends la fin des threads en fonction du compteur

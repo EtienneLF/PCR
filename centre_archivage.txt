@@ -1,3 +1,2 @@
-0001 Pcr1
-0002 Pcr2
-0003 Pcr3
+0001 10 Pcr.txt Pcr1
+0002 10 Pcr2.txt Pcr2

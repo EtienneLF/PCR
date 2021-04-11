@@ -30,6 +30,10 @@ struct arg_st {
     int arg2;
 };
 
+/**
+ * Print l'erreur si le nombre d'argument passé est insuffisant
+ * @param basename: argument
+ **/
 void usage(char * basename) { //print l'usage de la fonction
     fprintf(stderr,
         "usage : %s [<Taille mémoire>] [<Nom centre archivage>] [<Code de 4 chiffres>] [<Nom fichier résultats test PCR>] [Nombre terminal] [<Entrée Inter_Archives>] [<Sortie Inter_Archives>]\n",
@@ -40,8 +44,8 @@ void usage(char * basename) { //print l'usage de la fonction
 
 /**
  * Retourne le descripteur de fichier correspondant dans la mémoire au numéro de test passé en paramètre
- * Numero : Numero Pcr
-*/
+ * @param  numero : Numero du test
+ **/
 int thReponse(char* numero){
     for(int i = 0; i < sizeof(*tabID) ;i++){ //Pour chaque numéro de test PCR stocké dans la table de routage
         if(tabID[i] == strtoll(numero,NULL,10) && tab[0][i] == 1){ //Si le numéro dans la table de routage est égal au numéro passez en paramètre ET tab[0][i] == 1 (place prise dans la mémoire)
@@ -210,7 +214,7 @@ int main(int argc, char* argv[])
 
     pid = fork();
         if (pid == 0){
-            execlp("./validation", "./validation", str_A_V, str_V_A,NULL);
+            execlp("./validation", "./validation", str_A_V, str_V_A, resulats_Pcr,NULL);
             fprintf(stderr,"execlp() n'a pas fonctionné\n");
         }
     pthread_create(&v_thread_id, NULL, th_function, (void *)args);
@@ -233,12 +237,10 @@ int main(int argc, char* argv[])
         struct arg_st *args = (struct arg_st *)malloc(sizeof(struct arg_st));
         args -> arg1 = T_A[0];
         args -> arg2 = A_T[1];
-        
-        fprintf(stderr,"str_A_T : %i , %i str_T_A : %i , %i\n",A_T[0],A_T[1],T_A[0],T_A[1]);
 
         pid = fork();
         if (pid == 0){
-            execlp("xterm", "xterm", "-e", "./terminal", str_A_T, str_T_A,NULL);
+            execlp("xterm", "xterm", "-e", "./terminal", str_A_T, str_T_A, NULL);
             fprintf(stderr,"execlp() n'a pas fonctionné\n");
         }
         free(str_T_A);
