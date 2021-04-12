@@ -55,9 +55,13 @@ int main(int argc, char* argv[])
     dup2( argv1,0);        // Redirection de l'entrée     
     dup2( argv2,1);        // Redirection de la sortie
 
+    int existe; //Si une demande n'existe pas dans la base de données, pour retourner une reponse négative
+
     while(1){//Lis en continu les demandes 
         valide = "0";
         char* reponse = litLigne(0); // Lit l'entrée
+
+        existe = 0;
 
         char emeteur[255], type[255], valeur[255];
         int msgDecoupe = decoupe(reponse, emeteur, type, valeur); //Découpe le message en 3 parties
@@ -80,6 +84,8 @@ int main(int argc, char* argv[])
             for (int i =0; i < 16; i++){//Pour chaque numéro du test
                 if (lignePCR[i] == emeteur[i]){ //Si le numéro de la Demande correspond au numéro du test PCR dans le fichier
                     if( i == 15 ){
+                        existe = 1; //Le numéro est bien présent dans la base de donnée
+
                         int j=17;
                         
                         while(lignePCR[j]!= ' ' ){//Récupération du délai
@@ -99,6 +105,10 @@ int main(int argc, char* argv[])
             }
             lignePCR = litLigne(df); //Prochaine ligne
         } 
+        if(!existe){ //Si le message n'existe pas retourne une erreur pour ne pas bloquer la mémoire
+            char *msgErreur = message(emeteur,"Reponse", "0"); //Création de la réponse
+            ecritLigne(1,msgErreur); //Ecriture de la réponse dans le descripteur de fichier
+        }
         close(df); //Fermeture du descripteur de fichier
     }
    return 0;
