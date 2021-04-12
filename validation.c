@@ -37,6 +37,8 @@ void validation1(char * timestamp, char * resultat, char* valeurReponse){
     
     int iValeur = atoi(valeurReponse); //Transformation de char* valeur  en int
     int iTimestamp = atoi(timestamp);//Transformation de char* timestamp en int
+
+    fprintf(stderr, "Now : %li <= Test (%i) + timestamp (%i) %i\n", now,iTimestamp,iValeur, iValeur+iTimestamp);
     
     if (now <= (iTimestamp + iValeur)){ //Si la Demande est encore valide 
         if(strcmp(resultat,"0\n") == 0){//Si la valeur de la réponse est 1
@@ -50,8 +52,6 @@ int main(int argc, char* argv[])
     if (argc != 4) usage(argv[0]); // Test nombre arguments
     int argv1 = atoi(argv[1]);
     int argv2 = atoi(argv[2]);
-    //sscanf (argv[1],"%d",&argv0); //conversion argv[0] en int
-    //sscanf (argv[2],"%d",&argv1); //conversion argv[1] en int
     char * nom_fichier = argv[3];
 
     fprintf(stderr,"les deux sorties : %d , %d\n",argv1,argv2);

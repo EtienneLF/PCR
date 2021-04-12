@@ -21,7 +21,7 @@ char* createMsg(char* num){
     char time[255];
 
     aleainit();// Creation d'une demande de validation pour une durée de validité aléatoire
-    sprintf(time,"%d",alea(1,50000)); //durée aléatoire
+    sprintf(time,"%d",alea(0,1209600)); //durée aléatoire Entre 0secondes et 14 jours
 
     char *msg = message(num, "Demande", time);
 
