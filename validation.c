@@ -105,7 +105,7 @@ int main(int argc, char* argv[])
             }
             lignePCR = litLigne(df); //Prochaine ligne
         } 
-        if(!existe){ //Si le message n'existe pas retourne une erreur pour ne pas bloquer la mémoire
+        if(!existe){ //Si le test n'existe pas
             char *msgErreur = message(emeteur,"Reponse", "0"); //Création de la réponse
             ecritLigne(1,msgErreur); //Ecriture de la réponse dans le descripteur de fichier
         }
