@@ -31,6 +31,17 @@ struct arg_st {
 };
 
 /**
+ * Création d'un message en cas de test non présent dans la base de donnée
+ * @param num : numéro du test
+ **/
+char* createMsg(char* num){
+
+    char *msg = message(num, "Reponse", "0");
+
+    return msg;
+}
+
+/**
  * Decoupe du message 
  * Retourne 1 si il n'y a pas eu de problème
  * Retourne 0 si il y a eu un problème - errno est mis � EINVAL dans ce cas.
@@ -96,23 +107,26 @@ void inserTab(char* numero, int olddf){
  *  Associe les demandes au descripteur de fichier correspondant
  * @param numero: numéro du test
  * @param olddf: descripteur de fichier que l'on doit rajouter ds la table de routage
+ * @param msg : Msg Si erreur
  **/
-int associationDemande(char* numero, int olddf){
+int associationDemande(char* numero, int olddf, char ** msg){
     //Retenir les 4 premiers numéro du test PCR
     char num[4];
     for (int i = 0; i<4; i++){
         num[i] = numero[i];
     }
-    inserTab(numero,olddf); //ajoute dans la table de routage
 
     //Associe num -> df dans tab_temp retourne dfd
     for (int i = 0; i<nbr_acqui; i ++){
         if (atoi(num) == tab_df_acqui[0][i]){ //si les 4 premiers chiffres du test correspondent à ceux stocker ds le tableau
+            inserTab(numero,olddf); //ajoute dans la table de routage
             fprintf(stderr, "Demande n°%s, transmie à Acquisition n°%i de %i\n" , numero,atoi(num),olddf);
             return tab_df_acqui[1][i];
         }
     }
-    return -1; //Si problème
+    fprintf(stderr, "Demande n°%s, aucun centre d'archivage correspondant \n" , numero);//Erreur
+    * msg = createMsg(numero);
+    return olddf; //Si problème
 }
 
 /**
@@ -150,7 +164,7 @@ void testType(char * msg, int fd){
 
     if(strcmp(type, "Demande") == 0){ //Si le message est une Demande, Attends une place de libre (sémaphore taille mémoire) puis appelle la fonction ThDemande
         sem_wait(&s_memoire);
-        sortie = associationDemande(numero,fd); //Retourne descripteur fichier de la sortie voulu
+        sortie = associationDemande(numero,fd,&msg); //Retourne descripteur fichier de la sortie voulu
     }
     else if(strcmp(type, "Reponse") == 0){ //Si le message est une Réponse, Appelle la fonction ThReponse et Libère une place (sémaphore)
         sortie = associationReponse(numero); //Retourne descripteur fichier de la sortie voulu
@@ -160,9 +174,7 @@ void testType(char * msg, int fd){
 
     if(sortie == -1){ // Si erreur Open
         fprintf(stderr, "Sortie = -1 Erreur fonction testType InterArchives\n");
-        exit(1);
     }
-
     if( ! ecritLigne(sortie,msg)){ // Si erreur écriture
         fprintf(stderr, "Erreur écriture \n");
         exit(1);
