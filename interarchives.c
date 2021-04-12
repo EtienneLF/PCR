@@ -261,7 +261,7 @@ int main(int argc, char* argv[])
             execlp("xterm", "xterm", "-e", "./acquisition", memoirestr, nom_Serveur, num, nom_fichier, nbr_t,str_I_A, str_A_I,NULL); //Crée un nouveau terminal avec acquisition
             fprintf(stderr,"execlp() n'a pas fonctionné Inter_Archives\n"); //Erreur
         }
-        //Libère les calocs
+        //Libère les callocs
         free(str_I_A);
         free(str_A_I);
         pthread_create(&thread_id[i], NULL, th_function, (void *)args); //Création du Thread
