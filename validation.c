@@ -12,7 +12,7 @@
 #include <fcntl.h>
 
 //Valeur de validation du message de réponse
-char* valide="0";
+char* valide = "0";
 
 /**
  * Print l'erreur si le nombre d'argument passé est insuffisant
@@ -25,12 +25,12 @@ void usage(char * basename) {
     exit(1);
 }
 
- /**
-  * Change la valeur de valide si la valeur de la réponse est 1
-  * @param timestamp: durée de validité
-  * @param resultat: resultat lu dans le fichier
-  * @param valeurReponse: valeur de réponse (0 ou 1)
-  * */
+/**
+ * Change la valeur de valide si la valeur de la réponse est 1
+ * @param timestamp: durée de validité
+ * @param resultat: resultat lu dans le fichier
+ * @param valeurReponse: valeur de réponse (0 ou 1)
+ * */
 void validation1(char * timestamp, char * resultat, char* valeurReponse){
     time_t now;
     now = time(NULL); //Récupération du temps actuelle en secondes depuis le 1er janvier 1970 à 00:00:00
@@ -39,11 +39,10 @@ void validation1(char * timestamp, char * resultat, char* valeurReponse){
     int iTimestamp = atoi(timestamp);//Transformation de char* timestamp en int
     
     if (now <= (iTimestamp + iValeur)){ //Si la Demande est encore valide 
-        if(strcmp(resultat,"1\n") == 0){//Si la valeur de la réponse est 1
+        if(strcmp(resultat,"0\n") == 0){//Si la valeur de la réponse est 1
             valide = "1";//La demande est valide
         }
     }
-
 }
 
 int main(int argc, char* argv[])
@@ -60,7 +59,7 @@ int main(int argc, char* argv[])
     dup2( argv1,0);        // Redirection de l'entrée     
     dup2( argv2,1);        // Redirection de la sortie
 
-    while(1){
+    while(1){//Lis en continu les demandes 
         char* reponse = litLigne(0); // Lit l'entrée
 
         char emeteur[255], type[255], valeur[255];
@@ -78,7 +77,7 @@ int main(int argc, char* argv[])
         while(strcmp(lignePCR, "erreur") != 0 ){ //Tant que nous n'avons pas finis de lire le fichier
 
             char* resultat = &(lignePCR[strlen(lignePCR)-2]); //dernier caractère
-            int longueur = strlen(lignePCR);
+            int longueur = strlen(lignePCR); //longueur de la ligne 
             char* timestamp = malloc(longueur-19); //Temps de validité: calcul pour trouver la longueur date (Longeur Ligne PCR - 16(n° PCR) - 2(2 espaces) -1 (Résultat test)) 
 
             for (int i =0; i < 16; i++){//Pour chaque numéro du test
@@ -94,7 +93,7 @@ int main(int argc, char* argv[])
                         validation1(timestamp, resultat,valeur); //modification de valide si la valeur du test est 1
                         char *msg = message(emeteur,"Reponse", valide); //Création de la réponse
                         ecritLigne(1,msg); //Ecriture de la réponse dans le descripteur de fichier
-                        free(timestamp);
+                        free(timestamp); //Libération de la mémoire
                     }
                 } 
                 else{ //Si le numéro de la demande ne correspond pas à la ligne lue

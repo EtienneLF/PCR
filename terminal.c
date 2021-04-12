@@ -77,7 +77,7 @@ int compteLigne(char * nomFichier){
         temp +=1;
         ligne = litLigne(df);
     }
-    
+    close(df);
     return temp;
 }
 
@@ -100,25 +100,25 @@ int main(int argc, char* argv[])
     int argv1,argv2;
     sscanf (argv[1],"%d",&argv1); //conversion argv[0] en int
     sscanf (argv[2],"%d",&argv2); //conversion argv[1] en int
-    fprintf(stderr,"les deux sorties : %i , %i\n",argv1,argv2);
 
+    //Compte le nombre de ligne dans le fichier
     int nbrLigne = compteLigne("Liste_test.txt");
     int fd = open("Liste_test.txt",O_RDONLY);
+    //Cherche une ligne aléatoire dans le fichier
     aleainit();
     int aleaNum = alea(0,nbrLigne-1); 
-    char * ligne = ligneAleatoire(fd, aleaNum);
+    char * ligne = ligneAleatoire(fd, aleaNum); 
     
     //Création du message
     char* num = calloc(sizeof(char),16);
     for (int i =0; i < 16; i++){ //Récupération des 16 chiffres qui compose le numéro du test
         num[i] = ligne[i];
     }
-
     char* msg = createMsg(num);
-    free(num);
+    free(num); //Libération de la mémoire
     fprintf(stderr," Voici le message : %s", msg); // Affichage du message
     
-    dup2( argv1,0);        // Redirection de l'entrée
+    dup2( argv1,0);       // Redirection de l'entrée
     dup2( argv2,1);       // Redirection de la sortie
 
     ecritLigne(1,msg); //envoie le message

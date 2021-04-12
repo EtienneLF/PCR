@@ -13,18 +13,19 @@
 #include <fcntl.h>
 
 //Initialisation variables globales
-int memoire;
-int ** tab;
-long long int * tabID;
-char * local;
+int memoire;            //Taille de la mémoire de la table de routage
+int ** tab;             //Partie 1 de la table de routage
+long long int * tabID;  //Partie 2 de la table de routage
+char * local;           //Numéro du centre
 
-int df_Validation;
-int df_Inter_Archives;
+int df_Validation;      //Descripteurs fichier
+int df_Inter_Archives;  
 
 //Création sémaphore
 sem_t s_memoire;
 sem_t s_indice;
 
+//Structure pour arguments Thread
 struct arg_st {
     int arg1;
     int arg2;
@@ -43,7 +44,7 @@ void usage(char * basename) { //print l'usage de la fonction
 
 
 /**
- * Retourne le descripteur de fichier correspondant dans la mémoire au numéro de test passé en paramètre
+ * Retourne le descripteur de fichier correspondant dans la mémoire, au numéro de test passé en paramètre
  * @param  numero : Numero du test
  **/
 int thReponse(char* numero){
@@ -63,7 +64,7 @@ int thReponse(char* numero){
  * Retourne le numéro de l'indice du tableau contenant les descripteurs de ficiers
  **/
 int indice(){
-    for(int i = 0; i<memoire;i++){ //Pour chaque case regarde si tab[0][i] == 0, si oui retourne l'indice
+    for(int i = 0; i<memoire;i++){ //Pour chaque case on regarde si tab[0][i] == 0, si oui retourne l'indice
         if( tab[0][i] == 0){
             return i;
         }
@@ -74,7 +75,8 @@ int indice(){
 
 /**
  * Ajoute dans la table de routage le numéro du test Pcr et le descripteur de fichier pour le renvoyer
- * char * numero : Numero Pcr, int olddf : Duplicata du descripteur de l'entrée
+ * @param numero : Numero Pcr
+ * @param olddf : Duplicata du descripteur de l'entrée
 */
 void inserTab(char* numero, int olddf){
     sem_wait(&s_indice); //Entrée zone critique 
@@ -88,8 +90,8 @@ void inserTab(char* numero, int olddf){
 
 /**
  * Retourne le descripteur de fichier vers lequel on veut envoyer le fichier depuis une Demande (Validation ou InterArchives)
- * Numero : Numero Pcr
- * oldff : Descirpteur de fichier
+ * @param numero : Numero Pcr
+ * @param oldff : Descripteur de fichier
 */
 int thDemande(char* numero, int olddf){
     //Retenir les 4 premiers numéro du test PCR
@@ -97,6 +99,7 @@ int thDemande(char* numero, int olddf){
     for (int i = 0; i<4; i++){
         num[i] = numero[i];
     }
+
     inserTab(numero,olddf); //ajoute dans la table de routage
     if(strcmp(num, local) == 0){ //Si les numéros du test correspond au serveur local, transmettre à Validation 
                                   //Sinon transmet à Inter_Archives
@@ -112,8 +115,8 @@ int thDemande(char* numero, int olddf){
 
 /**
  * Fonction pour chaque nouveau Thread, Check le type de la demande (Demande ou Réponse) et envoie la demande vers la bonne destination
- * arg : msg, la demande de test PCR
- * df : descripteur de fichier
+ * @param arg : msg, la demande de test PCR
+ * @param df : descripteur de fichier
 */
 void testNumero(char * msg, int fd){
 
@@ -142,24 +145,25 @@ void testNumero(char * msg, int fd){
     }
 
     if( ! ecritLigne(sortie,msg)){ // Si erreur écriture
-        fprintf(stderr, "Erreur écriture \n");
+        fprintf(stderr, "Erreur écriture fonction testNumero Acquisition\n");
         exit(1);
     }
-    
 }
 
+
+/**
+ * Fonction exécuté par le Thread
+ * @param args: Structure contenant les deux arguments de la fonction, deux descripteurs de fichiers
+ **/
 void *th_function(void * args){
-    /*fprintf(stderr,"%d\n", ((struct arg_st*)args) -> arg1);
-    fprintf(stderr,"%d\n", ((struct arg_st*)args) -> arg2);*/
-    int df = ((struct arg_st*)args) -> arg1;
-    int fd = ((struct arg_st*)args) -> arg2;
-    
+    int df = ((struct arg_st*)args) -> arg1; //Entrée 
+    int fd = ((struct arg_st*)args) -> arg2; //Sortie
 
     while(1){
         char * ligne = litLigne(df); //Lit la prochaine ligne  
-        testNumero(ligne,fd);
+        testNumero(ligne,fd); //analyse de la ligne
     }
-    pthread_exit(NULL); //Fin des threads
+    pthread_exit(NULL); //Fin du thread
 }
 
 int main(int argc, char* argv[])
@@ -170,8 +174,8 @@ int main(int argc, char* argv[])
     local = argv[3]; //Numéro test local
     char * resulats_Pcr = argv[4]; //Nom fichier stockant les résultats
     int nrb_terminal = atoi(argv[5]); //nbr de terminal crée
-    int I_A = atoi(argv[6]);
-    df_Inter_Archives = atoi(argv[7]);
+    int I_A = atoi(argv[6]); //Entrée de Inter_Archives
+    df_Inter_Archives = atoi(argv[7]); //Sortie de Inter_Archives
 
     fprintf(stderr,"Centre d'archivage numéro : %s et de nom : %s crée, Résultat sotcké dans : %s\n",local,name,resulats_Pcr);
 
@@ -182,83 +186,97 @@ int main(int argc, char* argv[])
     //Initialisation Tableau Mémoire
     tab = calloc(2,sizeof(int)); //Tableau 2d qui stock en première ligne : 1 pour place occupée 0 pour place libre 
                                  //                        deuxième ligne : descripteur fichier
-    for(int i = 0; i< 2;i++){
+    for(int i = 0; i< 2;i++){//Initialisation de calloc dans le tableau
         tab[i] = calloc(memoire, sizeof(int));
     }
     tabID = calloc(memoire, sizeof(long long int)); //Tableau qui stock le numéro du test Pcr en long long int
 
-    pthread_t v_thread_id;
-    pthread_t i_thread_id;
-    pthread_t t_thread_id[nrb_terminal];
-    struct arg_st *args_I = (struct arg_st *)malloc(sizeof(struct arg_st));
+    //Création des adresse ou seront stockés les threads Id
+    pthread_t v_thread_id; //Validation
+    pthread_t i_thread_id; //Inter_Archives
+    pthread_t t_thread_id[nrb_terminal]; //Terminal en fonction du nombre de terminaux
+    
+    //Création du thread Inter_ARchives
+    struct arg_st *args_I = (struct arg_st *)malloc(sizeof(struct arg_st)); //Arguments
     args_I -> arg1 = I_A;
     args_I -> arg2 = df_Inter_Archives;
-    pthread_create(&i_thread_id, NULL, th_function, (void *)args_I);
+    pthread_create(&i_thread_id, NULL, th_function, (void *)args_I); //Création
 
-    //Création procéssus validation + thread
+    //Création processus validation + thread
+    //Création d'une paire de tube pour la communication avec le serveur acquisition
     int pid;
     int A_V[2];
     pipe(A_V);
     int V_A[2];
     pipe(V_A);
 
+    //Définit la variable globale sur le descripteur de fichier
     df_Validation = A_V[1];
 
+    //Convertit les descripteur de fichiers en cahr * pour les passés en arguments de execlp
     char * str_A_V = calloc(sizeof(char),2);
     sprintf(str_A_V, "%d", A_V[0]);
+
     char * str_V_A = calloc(sizeof(char),2);
     sprintf(str_V_A, "%d", V_A[1]);
-    struct arg_st *args = (struct arg_st *)malloc(sizeof(struct arg_st));
+
+    struct arg_st *args = (struct arg_st *)malloc(sizeof(struct arg_st));//Arguments
     args -> arg1 = V_A[0];
     args -> arg2 = A_V[1];
 
-    pid = fork();
-        if (pid == 0){
-            execlp("./validation", "./validation", str_A_V, str_V_A, resulats_Pcr,NULL);
-            fprintf(stderr,"execlp() n'a pas fonctionné\n");
-        }
+    pid = fork(); //Création d'un processus
+    if (pid == 0){ //le pid fils va exécuter le code du precessus validation
+        execlp("./validation", "./validation", str_A_V, str_V_A, resulats_Pcr,NULL);
+        fprintf(stderr,"execlp() n'a pas fonctionné Acquisition\n");
+    }
+    //Création du thread
     pthread_create(&v_thread_id, NULL, th_function, (void *)args);
+
+    //Libère les arguments
     free(str_V_A);
     free(str_A_V);
     
-
+    //Pour chaque terminal
     for(int i=0; i<nrb_terminal;i++){
+        //Création d'une paire de tube pour la communication avec le serveur acquisition
         int A_T[2];
         pipe(A_T);
         int T_A[2];
         pipe(T_A);
 
+        //Convertit les descripteur de fichiers en cahr * pour les passés en arguments de execlp
         char * str_A_T = calloc(sizeof(char),2);
         sprintf(str_A_T, "%d", A_T[0]);
 
         char * str_T_A = calloc(sizeof(char),2);
         sprintf(str_T_A, "%d", T_A[1]);
 
-        struct arg_st *args = (struct arg_st *)malloc(sizeof(struct arg_st));
+        struct arg_st *args = (struct arg_st *)malloc(sizeof(struct arg_st)); //Arguments
         args -> arg1 = T_A[0];
         args -> arg2 = A_T[1];
 
-        pid = fork();
-        if (pid == 0){
-            execlp("xterm", "xterm", "-e", "./terminal", str_A_T, str_T_A, NULL);
-            fprintf(stderr,"execlp() n'a pas fonctionné\n");
+        pid = fork(); //Création d'un processus
+        if (pid == 0){//le pid fils va exécuter le processus du Terminal
+            execlp("xterm", "xterm", "-e", "./terminal", str_A_T, str_T_A, NULL);  //Crée un nouveau terminal avec terminal
+            fprintf(stderr,"execlp() n'a pas fonctionné Acquisition\n");
         }
+        //Libère la mémoire
         free(str_T_A);
         free(str_A_T);
+        //Création du Thread
         pthread_create(&t_thread_id[i], NULL, th_function, (void *)args);
     }
 
-    //Attentte de la fin des threads
+    //Attente de la fin des threads
     pthread_join(v_thread_id,NULL);
-    //pthread_join(i_thread_id,NULL);
+    pthread_join(i_thread_id,NULL);
     for(int i=0;i<nrb_terminal;i++){ //Attends la fin des threads en fonction du compteur
         pthread_join(t_thread_id[i],NULL);
     }
 
-    //libère la mémoire des deux tableaux
+    //libération de la mémoire 
     free(tab);
     free(tabID);
     free(args);
-   
    return 0;
 }

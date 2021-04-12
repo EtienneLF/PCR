@@ -13,16 +13,18 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-int ** tab_memoire;
-int ** tab_df_acqui;
-long long int * tabID;
-int memoire;
-int nbr_acqui;
+//Initialisation variables globales
+int ** tab_memoire;             //Partie 1 de la table de routage
+int ** tab_df_acqui;            //Mémoire de la table des descripteurs fichiers
+long long int * tabID;          //Partie 2 de la table de routage
+int memoire;                    //Taille de la mémoire de la table de routage
+int nbr_acqui;                  //Nombre serveur acquisition
 
 //Création sémaphore
 sem_t s_memoire;
 sem_t s_indice;
 
+//Structure pour arguments Thread
 struct arg_st {
     int arg1;
     int arg2;
@@ -169,101 +171,107 @@ void testType(char * msg, int fd){
 }
 
 /**
- * 
- * */
+ * Fonction exécuté par le Thread
+ * @param args: Structure contenant les deux arguments de la fonction, deux descripteurs de fichiers
+ **/
 void *th_function(void * args){
-    int df = ((struct arg_st*)args) -> arg1;
-    int fd = ((struct arg_st*)args) -> arg2;
+    int df = ((struct arg_st*)args) -> arg1; //Entrée
+    int fd = ((struct arg_st*)args) -> arg2; //SOrtie
 
     while(1){
         char * ligne = litLigne(df); //Lit la prochaine ligne  
-        testType(ligne,fd);
+        testType(ligne,fd); //analyse de la ligne
     }
     pthread_exit(NULL); //Fin des threads
 }
 
 int main(int argc, char* argv[])
 {    
-    if (argc != 3) usage(argv[0]); // Test nombre arguments
-
-    char * memoirestr = argv[1];
-    memoire = atoi(memoirestr);
-    //char * nom_centre = argv[2];
-    //char * name = "Pcr.txt";
-    //char * nbr_terminal = "1";
+    if (argc != 3) usage(argv[0]); //Test nombre arguments
+    char * memoirestr = argv[1]; //Nombre de place dans la mémoire
+    memoire = atoi(memoirestr); //Transforme le char* en int
+    char * config = argv[2];
 
     //Initialisation des sémaphores
     sem_init(&s_memoire,0,memoire);
     sem_init(&s_indice,0,1);    
     
-    tab_memoire = calloc(2,sizeof(int)); //Tableau 2d qui stock en première ligne : 11 pour place occupée 0 pour place libre 
-                                        //                        deuxième ligne : descripteur fichier
-    for(int i = 0; i< 2;i++){
+    tab_memoire = calloc(2,sizeof(int)); //Tableau 2d qui stock en première ligne : 1 pour place occupée 0 pour place libre 
+                                         //                        deuxième ligne : descripteur fichier
+    for(int i = 0; i< 2;i++){ //Initialisation de calloc dans le tableau
         tab_memoire[i] = calloc(memoire, sizeof(int));
     }
 
     tabID = calloc(sizeof(long long int),memoire); //Tableau qui stock le numéro du test Pcr en long long int
 
-    int df = open("centre_archivage.txt", O_RDONLY);
-    char* ligne = litLigne(df);
-    nbr_acqui = 0;
-    while(strcmp(ligne, "erreur") != 0){
-        nbr_acqui++;
+    //Compte le nombre de ligne du fichier pour la suite (Thread_id par exemple)
+    int df = open(config, O_RDONLY); //ouvre le Fichier
+    char* ligne = litLigne(df); //Lit la première ligne
+    nbr_acqui = 0; //Compteur
+    while(strcmp(ligne, "erreur") != 0){ //Tant que la dernière ligne n'est pas vide
+        nbr_acqui++; //Incrément le compteur
         ligne = litLigne(df);
     }
     close(df);
-    pthread_t thread_id[nbr_acqui];
+    //Création des adresse ou seront stockés les threads Id
+    pthread_t thread_id[nbr_acqui]; //Tableau d'adresse en fonction du nombre de ligne (nombre de serveur)
 
     tab_df_acqui = calloc(2,sizeof(int)); //Tableau 2d qui stock en première ligne : Numéro du centre déarchivage
                                           //                        deuxième ligne : descripteur fichier lié
-    for(int i = 0; i< 2;i++){
+    for(int i = 0; i< 2;i++){//Initialisation de calloc dans le tableau
         tab_df_acqui[i] = calloc(nbr_acqui, sizeof(int));
     }
 
-    df = open("centre_archivage.txt", O_RDONLY);
-    //char * num = calloc(sizeof(char),4);
+    df = open(config, O_RDONLY); //Réouvre le fichier
 
-    for(int i = 0; i<nbr_acqui; i++){
-        ligne = litLigne(df);
-        char nume[255], nbr_t[255], nom_fichier[255], nom_Serveur[255];
-        decoupe2(ligne,nume,nbr_t,nom_fichier,nom_Serveur);    
+    for(int i = 0; i<nbr_acqui; i++){ //Pour chaque ligne dans le fichier
+        ligne = litLigne(df); //Lit une ligne
 
+        //Découpe de la ligne
+        char num[255], nbr_t[255], nom_fichier[255], nom_Serveur[255];
+        int msgDecoupe = decoupe2(ligne,num,nbr_t,nom_fichier,nom_Serveur);    
+        if(!msgDecoupe){ //Test le retour de la fonction découpe pour détecter une erreur
+            fprintf(stderr, "Erreur de découpage!!\n");
+            exit(1);
+        }
+
+        //Création d'une paire de tube pour la communication avec le serveur acquisition
         int I_A[2];
         pipe(I_A);
         int A_I[2];
         pipe(A_I);
 
-        tab_df_acqui[0][i] = atoi(nume);
-        tab_df_acqui[1][i] = I_A[1]; //Stock dans le tableau les futurs valeurs
+        //Stock dans le tableau le numéro du serveur et son descripteur de fichier associé
+        tab_df_acqui[0][i] = atoi(num);
+        tab_df_acqui[1][i] = I_A[1];
 
+        //Convertit les descripteur de fichiers en cahr * pour les passés en arguments de execlp
         char * str_I_A = calloc(sizeof(char),2);
         sprintf(str_I_A, "%d", I_A[0]);
 
         char * str_A_I = calloc(sizeof(char),2);
         sprintf(str_A_I, "%d", A_I[1]);
 
-        struct arg_st *args = (struct arg_st *)malloc(sizeof(struct arg_st));
+        struct arg_st *args = (struct arg_st *)malloc(sizeof(struct arg_st)); //Arguments
         args -> arg1 = A_I[0];
         args -> arg2 = I_A[1];
 
-        fprintf(stderr,"%s %s %s %s %s %s %s\n", memoirestr, nom_Serveur, nume, nom_fichier, nbr_t,str_I_A, str_A_I);
-
-        int pid = fork();
-        if (pid == 0){
-            execlp("xterm", "xterm", "-e", "./acquisition", memoirestr, nom_Serveur, nume, nom_fichier, nbr_t,str_I_A, str_A_I,NULL);
-            fprintf(stderr,"execlp() n'a pas fonctionné\n");
+        int pid = fork(); //Création d'un processus
+        if (pid == 0){ //Si Fils
+            execlp("xterm", "xterm", "-e", "./acquisition", memoirestr, nom_Serveur, num, nom_fichier, nbr_t,str_I_A, str_A_I,NULL); //Crée un nouveau terminal avec acquisition
+            fprintf(stderr,"execlp() n'a pas fonctionné Inter_Archives\n"); //Erreur
         }
+        //Libère les calocs
         free(str_I_A);
         free(str_A_I);
-        pthread_create(&thread_id[i], NULL, th_function, (void *)args);
-
-        fprintf(stderr,"Numéro %s associé au centre %s\n", nume, nom_Serveur);
+        pthread_create(&thread_id[i], NULL, th_function, (void *)args); //Création du Thread
     }
 
     for(int i=0;i<nbr_acqui;i++){ //Attends la fin des threads en fonction du compteur
         pthread_join(thread_id[i],NULL);
     }
 
+    //Libère la mémoire
     free(tab_memoire);
     free(tabID);
     free(tab_df_acqui);

@@ -1,2 +1,22 @@
 # PCR
 Projet PCR pour EL-3032
+
+README pour libCarteBancaire
+
+- Faire 'make' pour tout compiler.  
+  Si warning/probl�me sur malloc, modifier HAVE_MALLOC dans les
+  fichiers
+
+- Faire 'make' cleanall pour tout nettoyer, avant de faire une archive
+  * NOTE * : les Mac-users doivent utiliser la commande suivante
+  COPYFILE_DISABLE=1 tar zcvf libTestsPCR.tgz libTestsPCR
+  pour faire une archive sans les ennuyeux ._* fichiers sp�ciaux du Mac.
+
+- TestLectureEcriture.c / lectureEcriture.(c,h) : Fonction de lecture/ecriture 
+  d'une ligne/message
+
+- alea.(c,h) : g�n�rateur al�atoire - test� dans TestMessage
+
+- TestMessage.c message.(c,h) : Fonction de gestion des messages
+
+- TestRedirection.c : example de redirection, celui donn� en annexe dans le sujet

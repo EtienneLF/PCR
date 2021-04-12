@@ -29,8 +29,7 @@ char * litLigne(int fd)
       if (i == TAILLEBUF){
 	errno = EIO; // ligne trop grande
       return NULL;}
-      else
-       {return "erreur";}
+      else{return "erreur";}
     }
     i++;
   } while(c[i-1] != '\n');
