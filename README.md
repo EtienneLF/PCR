@@ -1,7 +1,7 @@
 # PCR
 ### Projet PCR pour EL-3032
 
-Mode d’emploi
+Mode d’emploi \n
 Compilation de l’application
 Afin de compiler l’application il suffit de rentrer la commande make dans un terminal positionné dans le dossier PCR. Afin de nettoyer tous les fichiers exécutables et fichiers objet il faut utiliser la commande make cleanall.
 Fichiers indispensables
