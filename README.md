@@ -1,7 +1,5 @@
 # PCR
-Projet PCR pour EL-3032
-
-README pour libCarteBancaire
+### Projet PCR pour EL-3032
 
 Mode d’emploi
 Compilation de l’application
