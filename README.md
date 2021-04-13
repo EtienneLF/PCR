@@ -18,11 +18,4 @@ Les fenêtres Acquisition, préciserons le numéro, le nom et le fichier dans le
 Les fenêtres Terminal, affichent une demande aléatoire tirée de *Liste_test.txt* ainsi que la réponse reçue, puis attends la rentrée manuelle d’une nouvelle demande de test.
 Pour terminer l’application, il faut fermer les terminaux, soit en tapant exit, soit en fermant la fenêtre. Puis une fois tous les terminaux d’un serveur Acquisition fermé, il faut aussi taper exit dans le bash, afin de finir le processus Validation et libérer la mémoire. Une fois tous les serveurs d’acquisition fermés, le processus d’Interarchive se fermera tout seul.
 
-- TestLectureEcriture.c / lectureEcriture.(c,h) : Fonction de lecture/ecriture 
-  d'une ligne/message
-
 - alea.(c,h) : generateur aleatoire - teste dans TestMessage
-
-- TestMessage.c message.(c,h) : Fonction de gestion des messages
-
-- TestRedirection.c : example de redirection, celui donné en annexe dans le sujet
