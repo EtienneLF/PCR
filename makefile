@@ -37,4 +37,4 @@ clean:
 	rm -f *.o *~ 
 
 cleanall: clean
-	rm TestRedirection TestMessage TestLectureEcriture terminal validation acquisition interarchives
+	rm terminal validation acquisition interarchives
