@@ -11,6 +11,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 
 //Initialisation variables globales
@@ -279,8 +280,16 @@ int main(int argc, char* argv[])
         pthread_create(&thread_id[i], NULL, th_function, (void *)args); //Création du Thread
     }
 
-    for(int i=0;i<nbr_acqui;i++){ //Attends la fin des threads en fonction du compteur
-        pthread_join(thread_id[i],NULL);
+    //Attends la fin de tout les serveurs d'acquisition
+    for(int i=0; i<nbr_acqui;i++){
+        wait(0);
+    }
+
+    fprintf(stderr,"Tout les serveurs acquisition ont été terminés, fin du processus InterArchives\n");
+
+    //Cancel tout les thread
+    for(int i=0;i<nbr_acqui;i++){ 
+        pthread_cancel(thread_id[i]);
     }
 
     //Libère la mémoire

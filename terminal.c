@@ -100,6 +100,7 @@ int main(int argc, char* argv[])
     int argv1,argv2;
     sscanf (argv[1],"%d",&argv1); //conversion argv[0] en int
     sscanf (argv[2],"%d",&argv2); //conversion argv[1] en int
+    int df = dup(0);//Pour pouvoir entrée manuellement des demandes dans le terminal
 
     //Compte le nombre de ligne dans le fichier
     int nbrLigne = compteLigne("Liste_test.txt");
@@ -116,32 +117,35 @@ int main(int argc, char* argv[])
     }
     char* msg = createMsg(num);
     free(num); //Libération de la mémoire
-    fprintf(stderr," Voici le message : %s", msg); // Affichage du message
-    
+
     dup2( argv1,0);       // Redirection de l'entrée
     dup2( argv2,1);       // Redirection de la sortie
 
-    ecritLigne(1,msg); //envoie le message
+    while(strcmp(msg, "exit\n") != 0){
+        fprintf(stderr," Voici le message : %s", msg); // Affichage du message
+        
+        ecritLigne(1,msg); //envoie le message
 
-    //Réponse
-    char* reponse = litLigne(0); // Lit la réponse
+        //Réponse
+        char* reponse = litLigne(0); // Lit la réponse
 
-    char emeteur[255], type[255], valeur[255];
-    int msgDecoupe = decoupe(reponse, emeteur, type, valeur); //Découpe du message en 3 parties
+        char emeteur[255], type[255], valeur[255];
+        int msgDecoupe = decoupe(reponse, emeteur, type, valeur); //Découpe du message en 3 parties
 
-    if(!msgDecoupe){ //Test le retour de la fonction découpe pour détecter une erreur
-        printf("print : Erreur de découpage!\n");
-        exit(1);
+        if(!msgDecoupe){ //Test le retour de la fonction découpe pour détecter une erreur
+            fprintf(stderr,"print : Erreur de découpage!\n");
+        }
+        else if( analyseValeur(valeur)) { //Si la valeur est 1
+            fprintf(stderr,"Validé\n");
+        }
+        else{ //Si la valeur est 0
+            fprintf(stderr,"Refusé\n");
+        }
+        msg = litLigne(df);
     }
-    if( analyseValeur(valeur)) { //Si la valeur est 1
-        fprintf(stderr,"Validé\n");
-    }
-    else{ //Si la valeur est 0
-        fprintf(stderr,"Refusé\n");
-    }
 
+   
+    ecritLigne(1,"exit"); //envoie le message
     close(fd); //Fermeture du descripteur de fichier
-    while(1); 
-
-   return 0;
+    return 0;
 }

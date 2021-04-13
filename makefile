@@ -1,4 +1,4 @@
-all:	 TestMessage TestRedirection TestLectureEcriture terminal test validation acquisition interarchives
+all:	 TestMessage TestRedirection TestLectureEcriture terminal validation acquisition interarchives
 
 message.o: message.c message.h
 	gcc -Wall -c message.c
@@ -49,4 +49,4 @@ clean:
 	rm -f *.o *~ 
 
 cleanall: clean
-	rm TestRedirection TestMessage TestLectureEcriture terminal test validation acquisition interarchives
+	rm TestRedirection TestMessage TestLectureEcriture terminal validation acquisition interarchives
