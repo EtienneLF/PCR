@@ -10,6 +10,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 
 //Initialisation variables globales
@@ -42,6 +43,16 @@ void usage(char * basename) { //print l'usage de la fonction
     exit(1);
 }
 
+/**
+ * Création d'un message en cas de test non présent dans la base de donnée
+ * @param num : numéro du test
+ **/
+char* createMsg(char* num){
+
+    char *msg = message(num, "Reponse", "0");
+
+    return msg;
+}
 
 /**
  * Retourne le descripteur de fichier correspondant dans la mémoire, au numéro de test passé en paramètre
@@ -126,7 +137,8 @@ void testNumero(char * msg, int fd){
 
     if(!msgDecoupe){ //Test le retour de la fonction découpe pour détecter une erreur
         fprintf(stderr, "Erreur de découpage!!\n");
-        exit(1);
+        ecritLigne(fd,createMsg(numero));
+        return;
     }
 
     if(strcmp(type, "Demande") == 0){ //Si le message est une Demande, Attends une place de libre (sémaphore taille mémoire) puis appelle la fonction ThDemande
@@ -141,12 +153,14 @@ void testNumero(char * msg, int fd){
 
     if(sortie == -1){ // Si erreur Open
         fprintf(stderr, "Sortie = -1 Erreur fonction testNumero Acquisition\n");
-        exit(1);
+        ecritLigne(fd,"Erreur");
+        return;
     }
 
     if( ! ecritLigne(sortie,msg)){ // Si erreur écriture
         fprintf(stderr, "Erreur écriture fonction testNumero Acquisition\n");
-        exit(1);
+        ecritLigne(fd,"Erreur message");
+        return;
     }
 }
 
@@ -160,7 +174,7 @@ void *th_function(void * args){
     int fd = ((struct arg_st*)args) -> arg2; //Sortie
 
     while(1){
-        char * ligne = litLigne(df); //Lit la prochaine ligne  
+        char *ligne = litLigne(df); //Lit la prochaine ligne 
         testNumero(ligne,fd); //analyse de la ligne
     }
     pthread_exit(NULL); //Fin du thread
@@ -224,8 +238,8 @@ int main(int argc, char* argv[])
     args -> arg1 = V_A[0];
     args -> arg2 = A_V[1];
 
-    pid = fork(); //Création d'un processus
-    if (pid == 0){ //le pid fils va exécuter le code du precessus validation
+    int pid_v = fork(); //Création d'un processus
+    if (pid_v == 0){ //le pid fils va exécuter le code du precessus validation
         execlp("./validation", "./validation", str_A_V, str_V_A, resulats_Pcr,NULL);
         fprintf(stderr,"execlp() n'a pas fonctionné Acquisition\n");
     }
@@ -267,16 +281,32 @@ int main(int argc, char* argv[])
         pthread_create(&t_thread_id[i], NULL, th_function, (void *)args);
     }
 
-    //Attente de la fin des threads
-    pthread_join(v_thread_id,NULL);
-    pthread_join(i_thread_id,NULL);
-    for(int i=0;i<nrb_terminal;i++){ //Attends la fin des threads en fonction du compteur
-        pthread_join(t_thread_id[i],NULL);
+    //Attends la fin de tout les terminaux
+    for(int i=0; i<nrb_terminal;i++){
+        wait(0);
     }
+    for(int i=0;i<nrb_terminal;i++){ //Cancel chaque Thread lié au Terminaux
+        pthread_cancel(t_thread_id[i]);
+    }
+
+    //Attends un message d'exit
+    while(1){
+        char * exit_msg = litLigne(0);
+        if(strcmp(exit_msg, "exit\n") == 0){
+            break;
+        }
+    }
+
+    fprintf(stderr,"Arret de validation");
+
+    //Kill le procéssus de validation et cancel les derniers Thread
+    kill(pid_v, SIGTERM);
+    pthread_cancel(v_thread_id);
+    pthread_cancel(i_thread_id);
 
     //libération de la mémoire 
     free(tab);
     free(tabID);
     free(args);
-   return 0;
+    return 0;
 }
